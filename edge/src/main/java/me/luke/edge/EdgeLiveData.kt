@@ -7,14 +7,15 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.os.Parcelable
 import android.os.RemoteException
+import android.os.SystemClock
 import android.util.Log
 import androidx.lifecycle.LiveData
 import java.util.*
 
 
-class EdgeLiveData<T : Parcelable>(
-    context: Context,
-    private val id: Int
+class EdgeLiveData<T : Parcelable?>(
+        context: Context,
+        private val id: Int
 ) : LiveData<T>() {
     private val instanceId = UUID.randomUUID().toString()
     private val appContext = context.applicationContext
@@ -22,7 +23,7 @@ class EdgeLiveData<T : Parcelable>(
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             try {
                 remote = IEdgeLiveDataService.Stub.asInterface(service).also {
-                    it.registerCallback(this)
+                    it.attachToService(ParcelableTransporter(lastUpdate, value), this)
                 }
             } catch (e: RemoteException) {
                 Log.w(TAG, e)
@@ -42,6 +43,7 @@ class EdgeLiveData<T : Parcelable>(
         }
     }
     private var remote: IEdgeLiveDataService? = null
+    private var lastUpdate: Long = 0
 
     init {
         if (id == 0) {
@@ -52,12 +54,12 @@ class EdgeLiveData<T : Parcelable>(
     override fun onActive() {
         if (remote == null) {
             appContext.bindService(
-                Intent(appContext, EdgeLiveDataSyncService::class.java).apply {
-                    putExtra(INSTANCE_ID_KEY, instanceId)
-                    putExtra(ID_KEY, id)
-                },
-                connection,
-                Context.BIND_AUTO_CREATE
+                    Intent(appContext, EdgeLiveDataSyncService::class.java).apply {
+                        putExtra(INSTANCE_ID_KEY, instanceId)
+                        putExtra(ID_KEY, id)
+                    },
+                    connection,
+                    Context.BIND_AUTO_CREATE
             )
         }
     }
@@ -74,8 +76,11 @@ class EdgeLiveData<T : Parcelable>(
 
     public override fun setValue(value: T) {
         super.setValue(value)
+        lastUpdate = SystemClock.uptimeMillis()
         try {
-            (remote ?: return).setValueRemote(ParcelableTransporter(value))
+            (remote ?: return).setValueRemote(
+                    ParcelableTransporter(lastUpdate, value)
+            )
         } catch (e: RemoteException) {
             Log.w(TAG, e)
         }

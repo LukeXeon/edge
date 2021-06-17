@@ -4,9 +4,11 @@ import android.os.Parcel
 import android.os.Parcelable
 
 class ParcelableTransporter(
+        val timestamp: Long,
         val parcelable: Parcelable?
 ) : Parcelable {
     override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeLong(timestamp)
         val className = parcelable?.javaClass?.name
         parcel.writeString(className)
         parcel.writeParcelable(parcelable, flags)
@@ -18,14 +20,13 @@ class ParcelableTransporter(
 
     companion object CREATOR : Parcelable.Creator<ParcelableTransporter> {
 
-        val EMPTY = ParcelableTransporter(null)
-
         private val CREATORS by lazy { HashMap<String, Parcelable.Creator<Parcelable>>() }
 
         override fun createFromParcel(parcel: Parcel): ParcelableTransporter {
+            val timestamp = parcel.readLong()
             val clazzName = parcel.readString()
             if (clazzName.isNullOrEmpty()) {
-                return ParcelableTransporter(null)
+                return ParcelableTransporter(timestamp, null)
             }
             val creator = synchronized(CREATORS) {
                 CREATORS.getOrPut(clazzName) {
@@ -36,7 +37,7 @@ class ParcelableTransporter(
                             .get(null) as Parcelable.Creator<Parcelable>
                 }
             }
-            return ParcelableTransporter(creator.createFromParcel(parcel))
+            return ParcelableTransporter(timestamp, creator.createFromParcel(parcel))
         }
 
         override fun newArray(size: Int): Array<ParcelableTransporter?> {

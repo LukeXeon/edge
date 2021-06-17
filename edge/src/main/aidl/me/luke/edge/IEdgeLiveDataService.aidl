@@ -7,6 +7,6 @@ interface IEdgeLiveDataService {
 
     void setValueRemote(in ParcelableTransporter value);
 
-    void registerCallback(in IEdgeLiveDataCallback callback);
+    void attachToService(in ParcelableTransporter value, in IEdgeLiveDataCallback callback);
 
 }

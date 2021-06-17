@@ -53,23 +53,22 @@ class EdgeLiveDataSyncService : Service() {
                 }
             }
 
-            override fun registerCallback(callback: IEdgeLiveDataCallback) {
+            override fun attachToService(value: ParcelableTransporter, callback: IEdgeLiveDataCallback) {
                 synchronized(lock) {
                     instances[instanceId] = callback
-                    val list = if (observers.contains(id)) {
-                        observers.get(id).also {
-                            try {
-                                callback.onRemoteChanged(it.value ?: ParcelableTransporter.EMPTY)
-                            } catch (e: RemoteException) {
-                                Log.w(TAG, e)
-                            }
-                        }
+                    val observer = if (observers.contains(id)) {
+                        observers.get(id)
                     } else {
-                        Observer().apply {
-                            observers.put(id, this)
+                        Observer().also {
+                            observers.put(id, it)
                         }
                     }
-                    list.callbacks.register(callback)
+                    observer.callbacks.register(callback)
+                    if (value.timestamp > (observer.value?.timestamp ?: 0)) {
+                        setValueRemote(value)
+                    } else {
+                        callback.onRemoteChanged(observer.value)
+                    }
                 }
             }
         }
