@@ -3,8 +3,10 @@ package me.luke.edge
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import android.os.Parcelable
 import android.os.RemoteCallbackList
 import android.os.RemoteException
+import android.util.Log
 import android.util.SparseArray
 import androidx.core.util.contains
 
@@ -12,7 +14,16 @@ import androidx.core.util.contains
 class EdgeLiveDataSyncService : Service() {
     private val lock = Any()
     private val instances = HashMap<String, IEdgeLiveDataCallback>()
-    private val observers = SparseArray<RemoteCallbackList<IEdgeLiveDataCallback>>()
+    private val observers = SparseArray<Observer>()
+
+    private class Observer {
+        val callbacks = RemoteCallbackList<IEdgeLiveDataCallback>()
+        var value: ParcelableTransporter? = null
+    }
+
+    companion object {
+        private const val TAG = "EdgeLiveDataSyncService"
+    }
 
     override fun onBind(intent: Intent): IBinder? {
         val id = intent.getIntExtra(EdgeLiveData.ID_KEY, 0)
@@ -23,19 +34,22 @@ class EdgeLiveDataSyncService : Service() {
         return object : IEdgeLiveDataService.Stub() {
             override fun setValueRemote(value: ParcelableTransporter) {
                 synchronized(lock) {
-                    val list = observers.get(id) ?: return
+                    val observer = observers.get(id) ?: return
+                    observer.value = value
+                    val callbacks = observer.callbacks
                     val current = instances[instanceId]
-                    val count = list.beginBroadcast()
+                    val count = callbacks.beginBroadcast()
                     for (i in 0 until count) {
-                        val callback = list.getBroadcastItem(i)
+                        val callback = callbacks.getBroadcastItem(i)
                         if (callback != current) {
                             try {
                                 callback.onRemoteChanged(value)
                             } catch (e: RemoteException) {
+                                Log.w(TAG, e)
                             }
                         }
                     }
-                    list.finishBroadcast()
+                    callbacks.finishBroadcast()
                 }
             }
 
@@ -43,13 +57,19 @@ class EdgeLiveDataSyncService : Service() {
                 synchronized(lock) {
                     instances[instanceId] = callback
                     val list = if (observers.contains(id)) {
-                        observers.get(id)
+                        observers.get(id).also {
+                            try {
+                                callback.onRemoteChanged(it.value ?: ParcelableTransporter.EMPTY)
+                            } catch (e: RemoteException) {
+                                Log.w(TAG, e)
+                            }
+                        }
                     } else {
-                        RemoteCallbackList<IEdgeLiveDataCallback>().apply {
+                        Observer().apply {
                             observers.put(id, this)
                         }
                     }
-                    list.register(callback)
+                    list.callbacks.register(callback)
                 }
             }
         }
@@ -60,10 +80,15 @@ class EdgeLiveDataSyncService : Service() {
         if (id != 0) {
             val instanceId = intent.getStringExtra(EdgeLiveData.INSTANCE_ID_KEY)!!
             synchronized(lock) {
-                val list = observers.get(id)
+                val callbacks = observers.get(id)?.callbacks
                 val callback = instances[instanceId]
-                if (list != null && callback != null) {
-                    list.unregister(callback)
+                if (callbacks != null) {
+                    if (callback != null) {
+                        callbacks.unregister(callback)
+                    }
+                    if (callbacks.registeredCallbackCount == 0) {
+                        observers.remove(id)
+                    }
                 }
             }
         }
