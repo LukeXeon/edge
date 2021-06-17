@@ -5,8 +5,8 @@ import me.luke.edge.IEdgeLiveDataCallback;
 
 interface IEdgeLiveDataService {
 
-    void setValueRemote(in ParcelableTransporter value);
+    void setValue(in ParcelableTransporter value);
 
-    void attachToService(in ParcelableTransporter value, in IEdgeLiveDataCallback callback);
+    void syncValue(in ParcelableTransporter value, in IEdgeLiveDataCallback callback);
 
 }

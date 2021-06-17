@@ -4,11 +4,10 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.os.IBinder
-import android.os.Parcelable
-import android.os.RemoteException
-import android.os.SystemClock
+import android.os.*
 import android.util.Log
+import androidx.annotation.AnyThread
+import androidx.annotation.MainThread
 import androidx.lifecycle.LiveData
 import java.util.*
 
@@ -19,11 +18,12 @@ class EdgeLiveData<T : Parcelable?>(
 ) : LiveData<T>() {
     private val instanceId = UUID.randomUUID().toString()
     private val appContext = context.applicationContext
+    private val handler = Handler(Looper.getMainLooper())
     private val connection = object : IEdgeLiveDataCallback.Stub(), ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             try {
                 remote = IEdgeLiveDataService.Stub.asInterface(service).also {
-                    it.attachToService(ParcelableTransporter(lastUpdate, value), this)
+                    it.syncValue(ParcelableTransporter(lastUpdate, value), this)
                 }
             } catch (e: RemoteException) {
                 Log.w(TAG, e)
@@ -38,8 +38,7 @@ class EdgeLiveData<T : Parcelable?>(
         }
 
         override fun onRemoteChanged(value: ParcelableTransporter) {
-            @Suppress("UNCHECKED_CAST")
-            postValue(value.parcelable as T)
+            handler.post { handleRemoteChanged(value) }
         }
     }
     private var remote: IEdgeLiveDataService? = null
@@ -70,15 +69,26 @@ class EdgeLiveData<T : Parcelable?>(
         }
     }
 
+    @AnyThread
     public override fun postValue(value: T) {
         super.postValue(value)
     }
 
+    @MainThread
+    private fun handleRemoteChanged(value: ParcelableTransporter) {
+        if (lastUpdate < value.timestamp) {
+            @Suppress("UNCHECKED_CAST")
+            super.setValue(value.parcelable as T)
+            lastUpdate = value.timestamp
+        }
+    }
+
+    @MainThread
     public override fun setValue(value: T) {
         super.setValue(value)
         lastUpdate = SystemClock.uptimeMillis()
         try {
-            (remote ?: return).setValueRemote(
+            (remote ?: return).setValue(
                     ParcelableTransporter(lastUpdate, value)
             )
         } catch (e: RemoteException) {

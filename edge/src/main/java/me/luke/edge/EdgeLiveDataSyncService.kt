@@ -36,7 +36,7 @@ class EdgeLiveDataSyncService : Service() {
         }
         val instanceId = intent.getStringExtra(EdgeLiveData.INSTANCE_ID_KEY)!!
         return object : IEdgeLiveDataService.Stub() {
-            override fun setValueRemote(value: ParcelableTransporter) {
+            override fun setValue(value: ParcelableTransporter) {
                 synchronized(lock) {
                     val observer = observers.get(id) ?: return
                     observer.value = value
@@ -57,7 +57,7 @@ class EdgeLiveDataSyncService : Service() {
                 }
             }
 
-            override fun attachToService(
+            override fun syncValue(
                     value: ParcelableTransporter,
                     callback: IEdgeLiveDataCallback
             ) {
@@ -66,7 +66,7 @@ class EdgeLiveDataSyncService : Service() {
                         val observer = observers.get(id)
                         if (value.timestamp > (observer.value?.timestamp ?: 0)) {
                             if (observer.callbacks.registeredCallbackCount > 0) {
-                                setValueRemote(value)
+                                setValue(value)
                             }
                         } else {
                             RemoteCallbackList<IEdgeLiveDataCallback>().apply {
