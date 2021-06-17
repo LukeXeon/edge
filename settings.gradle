@@ -1,0 +1,9 @@
+dependencyResolutionManagement {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+rootProject.name = "edge"
+include ':app'
+include ':edge'
