@@ -3,7 +3,6 @@ package me.luke.edge
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
-import android.os.Parcelable
 import android.os.RemoteCallbackList
 import android.os.RemoteException
 import android.util.Log
@@ -16,9 +15,14 @@ class EdgeLiveDataSyncService : Service() {
     private val instances = HashMap<String, IEdgeLiveDataCallback>()
     private val observers = SparseArray<Observer>()
 
-    private class Observer {
-        val callbacks = RemoteCallbackList<IEdgeLiveDataCallback>()
-        var value: ParcelableTransporter? = null
+    private class Observer(
+            callback: IEdgeLiveDataCallback,
+            value: ParcelableTransporter
+    ) {
+        val callbacks = RemoteCallbackList<IEdgeLiveDataCallback>().apply {
+            register(callback)
+        }
+        var value: ParcelableTransporter? = value
     }
 
     companion object {
@@ -53,22 +57,31 @@ class EdgeLiveDataSyncService : Service() {
                 }
             }
 
-            override fun attachToService(value: ParcelableTransporter, callback: IEdgeLiveDataCallback) {
+            override fun attachToService(
+                    value: ParcelableTransporter,
+                    callback: IEdgeLiveDataCallback
+            ) {
                 synchronized(lock) {
-                    instances[instanceId] = callback
-                    val observer = if (observers.contains(id)) {
-                        observers.get(id)
-                    } else {
-                        Observer().also {
-                            observers.put(id, it)
+                    if (observers.contains(id)) {
+                        val observer = observers.get(id)
+                        if (value.timestamp > (observer.value?.timestamp ?: 0)) {
+                            if (observer.callbacks.registeredCallbackCount > 0) {
+                                setValueRemote(value)
+                            }
+                        } else {
+                            RemoteCallbackList<IEdgeLiveDataCallback>().apply {
+                                register(callback)
+                                beginBroadcast()
+                                callback.onRemoteChanged(observer.value)
+                                finishBroadcast()
+                                unregister(callback)
+                            }
                         }
-                    }
-                    observer.callbacks.register(callback)
-                    if (value.timestamp > (observer.value?.timestamp ?: 0)) {
-                        setValueRemote(value)
+                        observer.callbacks.register(callback)
                     } else {
-                        callback.onRemoteChanged(observer.value)
+                        observers.put(id, Observer(callback, value))
                     }
+                    instances[instanceId] = callback
                 }
             }
         }
