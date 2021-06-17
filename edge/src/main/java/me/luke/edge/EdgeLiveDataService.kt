@@ -7,22 +7,21 @@ import android.os.RemoteCallbackList
 import android.os.RemoteException
 import android.util.Log
 import android.util.SparseArray
-import androidx.core.util.contains
 
 
 class EdgeLiveDataService : Service() {
     private val lock = Any()
     private val instances = HashMap<String, IEdgeLiveDataCallback>()
-    private val observers = SparseArray<Observer>()
+    private val groups = SparseArray<Group>()
 
-    private class Observer(
+    private class Group(
             callback: IEdgeLiveDataCallback,
-            value: ParcelableTransporter
+            value: PendingParcelable
     ) {
         val callbacks = RemoteCallbackList<IEdgeLiveDataCallback>().apply {
             register(callback)
         }
-        var value: ParcelableTransporter? = value
+        var value: PendingParcelable? = value
     }
 
     companion object {
@@ -36,11 +35,11 @@ class EdgeLiveDataService : Service() {
         }
         val instanceId = intent.getStringExtra(EdgeLiveData.INSTANCE_ID_KEY)!!
         return object : IEdgeLiveDataService.Stub() {
-            override fun setValue(value: ParcelableTransporter) {
+            override fun setValue(value: PendingParcelable) {
                 synchronized(lock) {
-                    val observer = observers.get(id) ?: return
-                    observer.value = value
-                    val callbacks = observer.callbacks
+                    val group = groups.get(id) ?: return
+                    group.value = value
+                    val callbacks = group.callbacks
                     val current = instances[instanceId]
                     val count = callbacks.beginBroadcast()
                     for (i in 0 until count) {
@@ -58,28 +57,28 @@ class EdgeLiveDataService : Service() {
             }
 
             override fun syncValue(
-                    value: ParcelableTransporter,
+                    value: PendingParcelable,
                     callback: IEdgeLiveDataCallback
             ) {
                 synchronized(lock) {
-                    if (observers.contains(id)) {
-                        val observer = observers.get(id)
-                        if (value.timestamp > (observer.value?.timestamp ?: 0)) {
-                            if (observer.callbacks.registeredCallbackCount > 0) {
+                    if (groups.indexOfKey(id) > 0) {
+                        val group = groups.get(id)
+                        if (value.timestamp > (group.value?.timestamp ?: 0)) {
+                            if (group.callbacks.registeredCallbackCount > 0) {
                                 setValue(value)
                             }
                         } else {
                             RemoteCallbackList<IEdgeLiveDataCallback>().apply {
                                 register(callback)
                                 beginBroadcast()
-                                callback.onRemoteChanged(observer.value)
+                                callback.onRemoteChanged(group.value)
                                 finishBroadcast()
                                 unregister(callback)
                             }
                         }
-                        observer.callbacks.register(callback)
+                        group.callbacks.register(callback)
                     } else {
-                        observers.put(id, Observer(callback, value))
+                        groups.put(id, Group(callback, value))
                     }
                     instances[instanceId] = callback
                 }
@@ -92,14 +91,14 @@ class EdgeLiveDataService : Service() {
         if (id != 0) {
             val instanceId = intent.getStringExtra(EdgeLiveData.INSTANCE_ID_KEY)!!
             synchronized(lock) {
-                val callbacks = observers.get(id)?.callbacks
+                val callbacks = groups.get(id)?.callbacks
                 val callback = instances[instanceId]
                 if (callbacks != null) {
                     if (callback != null) {
                         callbacks.unregister(callback)
                     }
                     if (callbacks.registeredCallbackCount == 0) {
-                        observers.remove(id)
+                        groups.remove(id)
                     }
                 }
             }

@@ -23,7 +23,7 @@ class EdgeLiveData<T : Parcelable?>(
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             try {
                 remote = IEdgeLiveDataService.Stub.asInterface(service).also {
-                    it.syncValue(ParcelableTransporter(lastUpdate, value), this)
+                    it.syncValue(PendingParcelable(lastUpdate, value), this)
                 }
             } catch (e: RemoteException) {
                 Log.w(TAG, e)
@@ -37,7 +37,7 @@ class EdgeLiveData<T : Parcelable?>(
             }
         }
 
-        override fun onRemoteChanged(value: ParcelableTransporter) {
+        override fun onRemoteChanged(value: PendingParcelable) {
             handler.post { handleRemoteChanged(value) }
         }
     }
@@ -75,7 +75,7 @@ class EdgeLiveData<T : Parcelable?>(
     }
 
     @MainThread
-    private fun handleRemoteChanged(value: ParcelableTransporter) {
+    private fun handleRemoteChanged(value: PendingParcelable) {
         if (lastUpdate < value.timestamp) {
             @Suppress("UNCHECKED_CAST")
             super.setValue(value.parcelable as T)
@@ -89,7 +89,7 @@ class EdgeLiveData<T : Parcelable?>(
         lastUpdate = SystemClock.uptimeMillis()
         try {
             (remote ?: return).setValue(
-                    ParcelableTransporter(lastUpdate, value)
+                    PendingParcelable(lastUpdate, value)
             )
         } catch (e: RemoteException) {
             Log.w(TAG, e)
