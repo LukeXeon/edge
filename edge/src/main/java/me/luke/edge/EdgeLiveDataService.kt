@@ -10,7 +10,7 @@ import android.util.SparseArray
 import androidx.core.util.contains
 
 
-class EdgeLiveDataSyncService : Service() {
+class EdgeLiveDataService : Service() {
     private val lock = Any()
     private val instances = HashMap<String, IEdgeLiveDataCallback>()
     private val observers = SparseArray<Observer>()

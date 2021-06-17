@@ -53,7 +53,7 @@ class EdgeLiveData<T : Parcelable?>(
     override fun onActive() {
         if (remote == null) {
             appContext.bindService(
-                    Intent(appContext, EdgeLiveDataSyncService::class.java).apply {
+                    Intent(appContext, EdgeLiveDataService::class.java).apply {
                         putExtra(INSTANCE_ID_KEY, instanceId)
                         putExtra(ID_KEY, id)
                     },
