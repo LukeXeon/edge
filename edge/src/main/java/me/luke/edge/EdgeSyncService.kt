@@ -26,7 +26,7 @@ class EdgeSyncService : Service() {
         override fun notifyDataChanged(
                 dataId: String,
                 instanceId: String,
-                value: EdgeValue
+                value: VersionedParcelable
         ) {
             val callbackList = synchronized(callbacks) { callbacks[dataId] } ?: return
             synchronized(callbackList) {

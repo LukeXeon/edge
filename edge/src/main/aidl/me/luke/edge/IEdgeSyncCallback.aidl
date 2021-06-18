@@ -1,9 +1,9 @@
 package me.luke.edge;
 
-import me.luke.edge.EdgeValue;
+import me.luke.edge.VersionedParcelable;
 
 interface IEdgeSyncCallback {
 
-    void onReceive(in EdgeValue value, in boolean fromNew);
+    void onReceive(in VersionedParcelable value, in boolean fromNew);
 
 }

@@ -30,7 +30,7 @@ class EdgeLiveData<T : Parcelable?>(
         }
     }
     private val stub = object : IEdgeSyncCallback.Stub() {
-        override fun onReceive(value: EdgeValue, fromNew: Boolean) {
+        override fun onReceive(value: VersionedParcelable, fromNew: Boolean) {
             if (setPendingData(value)) {
                 MAIN_HANDLER.post(if (fromNew)
                     handleReceiveFromNewRunnable
@@ -87,7 +87,7 @@ class EdgeLiveData<T : Parcelable?>(
             this.service = IEdgeSyncService.Stub
                     .asInterface(service)
                     .apply {
-                        notifyDataChanged(dataId, instanceId, EdgeValue(lastUpdate, value))
+                        notifyDataChanged(dataId, instanceId, VersionedParcelable(lastUpdate, value))
                         setCallback(dataId, instanceId, stub)
                     }
         } catch (e: RemoteException) {
@@ -106,7 +106,7 @@ class EdgeLiveData<T : Parcelable?>(
         }
     }
 
-    private fun setPendingData(value: EdgeValue): Boolean {
+    private fun setPendingData(value: VersionedParcelable): Boolean {
         var postTask: Boolean
         synchronized(dataLock) {
             postTask = pendingData == PENDING_NO_SET
@@ -121,7 +121,7 @@ class EdgeLiveData<T : Parcelable?>(
             newValue = pendingData
             pendingData = PENDING_NO_SET
         }
-        val value = newValue as? EdgeValue ?: return false
+        val value = newValue as? VersionedParcelable ?: return false
         return if (lastUpdate < value.version) {
             @Suppress("UNCHECKED_CAST")
             super.setValue(value.data as T)
@@ -135,7 +135,7 @@ class EdgeLiveData<T : Parcelable?>(
     private fun notifyRemoteDataChanged() {
         val service = service ?: return
         try {
-            service.notifyDataChanged(dataId, instanceId, EdgeValue(lastUpdate, value))
+            service.notifyDataChanged(dataId, instanceId, VersionedParcelable(lastUpdate, value))
         } catch (e: RemoteException) {
             Log.w(TAG, e)
         }
