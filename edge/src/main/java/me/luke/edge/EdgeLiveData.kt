@@ -13,58 +13,85 @@ import java.util.*
 
 
 class EdgeLiveData<T : Parcelable?>(
-        context: Context,
-        private val id: Int
+    context: Context,
+    private val dataId: String
 ) : LiveData<T>() {
     private val instanceId = UUID.randomUUID().toString()
     private val appContext = context.applicationContext
-    private val handler = Handler(Looper.getMainLooper())
-    private val connection = object : IEdgeLiveDataCallback.Stub(), ServiceConnection {
+    private val dataLock = Any()
+    private val handleRemoteChangedRunnable = Runnable {
+        var newValue: Any?
+        synchronized(dataLock) {
+            newValue = pendingData
+            pendingData = PENDING_NO_SET
+        }
+        val value = newValue as? EdgeLiveDataPendingValue ?: return@Runnable
+        if (lastUpdate < value.timestamp) {
+            @Suppress("UNCHECKED_CAST")
+            super.setValue(value.data as T)
+            lastUpdate = value.timestamp
+        }
+    }
+    private val stub = object : IEdgeLiveDataSyncClient.Stub() {
+        override fun onRemoteChanged(value: EdgeLiveDataPendingValue) {
+            var postTask: Boolean
+            synchronized(dataLock) {
+                postTask = pendingData == PENDING_NO_SET
+                pendingData = value
+            }
+            if (!postTask) {
+                return
+            }
+            MAIN_HANDLER.post(handleRemoteChangedRunnable)
+        }
+    }
+    private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             try {
-                remote = IEdgeLiveDataService.Stub.asInterface(service).also {
-                    it.syncValue(PendingParcelable(lastUpdate, value), this)
-                }
+                this@EdgeLiveData.service = IEdgeLiveDataSyncService.Stub
+                    .asInterface(service)
+                    .also {
+                        it.onClientConnected(
+                            dataId,
+                            instanceId,
+                            EdgeLiveDataPendingValue(lastUpdate, value),
+                            stub
+                        )
+                    }
             } catch (e: RemoteException) {
                 Log.w(TAG, e)
             }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            remote = null
+            service = null
             if (hasActiveObservers()) {
                 onActive()
             }
         }
-
-        override fun onRemoteChanged(value: PendingParcelable) {
-            handler.post { handleRemoteChanged(value) }
-        }
     }
-    private var remote: IEdgeLiveDataService? = null
+    private var pendingData: Any? = null
+    private var service: IEdgeLiveDataSyncService? = null
     private var lastUpdate: Long = 0
 
     init {
-        if (id == 0) {
-            throw IllegalArgumentException("id must not be 0")
+        if (dataId.isBlank()) {
+            throw IllegalArgumentException("dataId must not be empty")
         }
     }
 
     override fun onActive() {
-        if (remote == null) {
+        if (service == null) {
             appContext.bindService(
-                    Intent(appContext, EdgeLiveDataService::class.java).apply {
-                        putExtra(INSTANCE_ID_KEY, instanceId)
-                        putExtra(ID_KEY, id)
-                    },
-                    connection,
-                    Context.BIND_AUTO_CREATE
+                Intent(appContext, EdgeLiveDataSyncService::class.java),
+                connection,
+                Context.BIND_AUTO_CREATE
             )
         }
     }
 
     override fun onInactive() {
-        if (remote != null) {
+        if (service != null) {
             appContext.unbindService(connection)
         }
     }
@@ -75,21 +102,14 @@ class EdgeLiveData<T : Parcelable?>(
     }
 
     @MainThread
-    private fun handleRemoteChanged(value: PendingParcelable) {
-        if (lastUpdate < value.timestamp) {
-            @Suppress("UNCHECKED_CAST")
-            super.setValue(value.parcelable as T)
-            lastUpdate = value.timestamp
-        }
-    }
-
-    @MainThread
     public override fun setValue(value: T) {
         super.setValue(value)
         lastUpdate = SystemClock.uptimeMillis()
         try {
-            (remote ?: return).setValue(
-                    PendingParcelable(lastUpdate, value)
+            (service ?: return).notifyDataChanged(
+                dataId,
+                instanceId,
+                EdgeLiveDataPendingValue(lastUpdate, value)
             )
         } catch (e: RemoteException) {
             Log.w(TAG, e)
@@ -97,8 +117,8 @@ class EdgeLiveData<T : Parcelable?>(
     }
 
     companion object {
-        internal const val ID_KEY = "id"
-        internal const val INSTANCE_ID_KEY = "instanceId"
+        private val MAIN_HANDLER = Handler(Looper.getMainLooper())
+        private val PENDING_NO_SET = Any()
         private const val TAG = "EdgeLiveData"
     }
 }

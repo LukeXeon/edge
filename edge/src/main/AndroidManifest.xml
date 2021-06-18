@@ -4,6 +4,6 @@
     <application>
         <service
             android:exported="false"
-            android:name=".EdgeLiveDataService"/>
+            android:name=".EdgeLiveDataSyncService"/>
     </application>
 </manifest>
