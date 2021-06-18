@@ -90,12 +90,7 @@ class EdgeLiveData<T : Parcelable?>(
             this.service = IEdgeSyncService.Stub
                     .asInterface(service)
                     .apply {
-                        attachToService(
-                                dataId,
-                                instanceId,
-                                EdgeValue(lastUpdate, value),
-                                stub
-                        )
+                        attachToService(EdgeRequest(dataId, instanceId, EdgeValue(lastUpdate, value)), stub)
                     }
         } catch (e: RemoteException) {
             Log.w(TAG, e)
@@ -142,11 +137,7 @@ class EdgeLiveData<T : Parcelable?>(
     private fun notifyRemoteDataChanged() {
         val service = service ?: return
         try {
-            service.notifyDataChanged(
-                    dataId,
-                    instanceId,
-                    EdgeValue(lastUpdate, value)
-            )
+            service.notifyDataChanged(EdgeRequest(dataId, instanceId, EdgeValue(lastUpdate, value)))
         } catch (e: RemoteException) {
             Log.w(TAG, e)
         }

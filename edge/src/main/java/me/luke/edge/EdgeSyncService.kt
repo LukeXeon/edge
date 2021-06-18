@@ -12,11 +12,12 @@ class EdgeSyncService : Service() {
     private val callbacks = HashMap<String, RemoteCallbackList<IEdgeSyncClient>>()
     private val stub = object : IEdgeSyncService.Stub() {
         override fun attachToService(
-                dataId: String,
-                instanceId: String,
-                value: EdgeValue,
+                request: EdgeRequest,
                 client: IEdgeSyncClient
         ) {
+            val dataId = request.dataId
+            val instanceId = request.instanceId
+            val value = request.value
             val callbackList = synchronized(callbacks) {
                 callbacks.getOrPut(dataId) { RemoteCallbackList() }
             }
@@ -35,11 +36,10 @@ class EdgeSyncService : Service() {
             }
         }
 
-        override fun notifyDataChanged(
-                dataId: String,
-                instanceId: String,
-                value: EdgeValue
-        ) {
+        override fun notifyDataChanged(request: EdgeRequest) {
+            val dataId = request.dataId
+            val instanceId = request.instanceId
+            val value = request.value
             val callbackList = synchronized(callbacks) { callbacks[dataId] } ?: return
             synchronized(callbackList) {
                 val count = callbackList.beginBroadcast()

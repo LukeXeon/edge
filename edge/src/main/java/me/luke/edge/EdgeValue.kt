@@ -4,12 +4,16 @@ import android.os.Parcel
 import android.os.Parcelable
 
 class EdgeValue(
-    val version: Long,
-    val data: Parcelable?
+        val version: Long,
+        val data: Parcelable?
 ) : Parcelable {
+    constructor(parcel: Parcel) : this(
+            parcel.readLong(),
+            parcel.readParcelable(EdgeValue::class.java.classLoader)) {
+    }
+
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeLong(version)
-        parcel.writeParcelable(data, flags)
     }
 
     override fun describeContents(): Int {
@@ -17,12 +21,8 @@ class EdgeValue(
     }
 
     companion object CREATOR : Parcelable.Creator<EdgeValue> {
-
         override fun createFromParcel(parcel: Parcel): EdgeValue {
-            return EdgeValue(
-                parcel.readLong(),
-                parcel.readParcelable(EdgeValue::class.java.classLoader)
-            )
+            return EdgeValue(parcel)
         }
 
         override fun newArray(size: Int): Array<EdgeValue?> {

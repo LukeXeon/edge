@@ -1,12 +1,12 @@
 package me.luke.edge;
 
-import me.luke.edge.EdgeValue;
+import me.luke.edge.EdgeRequest;
 import me.luke.edge.IEdgeSyncClient;
 
 interface IEdgeSyncService {
 
-    void notifyDataChanged(in String dataId, in String instanceId, in EdgeValue value);
+    void notifyDataChanged(in EdgeRequest request);
 
-    void attachToService(in String dataId, in String instanceId, in EdgeValue value, in IEdgeSyncClient client);
+    void attachToService(in EdgeRequest request, in IEdgeSyncClient client);
 
 }
