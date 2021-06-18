@@ -25,15 +25,15 @@ class EdgeLiveData<T : Parcelable?>(
             newValue = pendingData
             pendingData = PENDING_NO_SET
         }
-        val value = newValue as? EdgeLiveDataPendingValue ?: return@Runnable
-        if (lastUpdate < value.timestamp) {
+        val value = newValue as? EdgeValue ?: return@Runnable
+        if (lastUpdate < value.version) {
             @Suppress("UNCHECKED_CAST")
             super.setValue(value.data as T)
-            lastUpdate = value.timestamp
+            lastUpdate = value.version
         }
     }
-    private val stub = object : IEdgeLiveDataSyncClient.Stub() {
-        override fun onRemoteChanged(value: EdgeLiveDataPendingValue) {
+    private val stub = object : IEdgeSyncClient.Stub() {
+        override fun onRemoteChanged(value: EdgeValue) {
             var postTask: Boolean
             synchronized(dataLock) {
                 postTask = pendingData == PENDING_NO_SET
@@ -48,13 +48,13 @@ class EdgeLiveData<T : Parcelable?>(
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             try {
-                this@EdgeLiveData.service = IEdgeLiveDataSyncService.Stub
+                this@EdgeLiveData.service = IEdgeSyncService.Stub
                     .asInterface(service)
                     .also {
                         it.onClientConnected(
                             dataId,
                             instanceId,
-                            EdgeLiveDataPendingValue(lastUpdate, value),
+                            EdgeValue(lastUpdate, value),
                             stub
                         )
                     }
@@ -71,7 +71,7 @@ class EdgeLiveData<T : Parcelable?>(
         }
     }
     private var pendingData: Any? = null
-    private var service: IEdgeLiveDataSyncService? = null
+    private var service: IEdgeSyncService? = null
     private var lastUpdate: Long = 0
 
     init {
@@ -83,7 +83,7 @@ class EdgeLiveData<T : Parcelable?>(
     override fun onActive() {
         if (service == null) {
             appContext.bindService(
-                Intent(appContext, EdgeLiveDataSyncService::class.java),
+                Intent(appContext, EdgeSyncService::class.java),
                 connection,
                 Context.BIND_AUTO_CREATE
             )
@@ -109,7 +109,7 @@ class EdgeLiveData<T : Parcelable?>(
             (service ?: return).notifyDataChanged(
                 dataId,
                 instanceId,
-                EdgeLiveDataPendingValue(lastUpdate, value)
+                EdgeValue(lastUpdate, value)
             )
         } catch (e: RemoteException) {
             Log.w(TAG, e)

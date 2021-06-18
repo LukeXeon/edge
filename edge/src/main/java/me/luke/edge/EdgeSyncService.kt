@@ -8,25 +8,25 @@ import android.os.RemoteException
 import android.util.Log
 
 
-class EdgeLiveDataSyncService : Service() {
+class EdgeSyncService : Service() {
     private val lock = Any()
     private val groups = HashMap<String, ClientGroup>()
-    private val stub = object : IEdgeLiveDataSyncService.Stub() {
+    private val stub = object : IEdgeSyncService.Stub() {
         override fun onClientConnected(
             dataId: String,
             instanceId: String,
-            value: EdgeLiveDataPendingValue,
-            client: IEdgeLiveDataSyncClient
+            value: EdgeValue,
+            client: IEdgeSyncClient
         ) {
             synchronized(lock) {
                 val group = groups[dataId]
                 if (group != null) {
-                    if (value.timestamp > (group.value?.timestamp ?: 0)) {
+                    if (value.version > (group.value?.version ?: 0)) {
                         if (group.registeredCallbackCount > 0) {
                             group.notifyDataChanged(value, instanceId)
                         }
                     } else {
-                        RemoteCallbackList<IEdgeLiveDataSyncClient>().apply {
+                        RemoteCallbackList<IEdgeSyncClient>().apply {
                             register(client)
                             beginBroadcast()
                             getBroadcastItem(0).onRemoteChanged(group.value)
@@ -44,7 +44,7 @@ class EdgeLiveDataSyncService : Service() {
         override fun notifyDataChanged(
             dataId: String,
             instanceId: String,
-            value: EdgeLiveDataPendingValue
+            value: EdgeValue
         ) {
             (synchronized(lock) { groups[dataId] } ?: return).notifyDataChanged(value, instanceId)
         }
@@ -55,14 +55,14 @@ class EdgeLiveDataSyncService : Service() {
     }
 
     private class ClientGroup(
-        client: IEdgeLiveDataSyncClient,
+        client: IEdgeSyncClient,
         instanceId: String,
-        value: EdgeLiveDataPendingValue
-    ) : RemoteCallbackList<IEdgeLiveDataSyncClient>() {
+        value: EdgeValue
+    ) : RemoteCallbackList<IEdgeSyncClient>() {
 
         private val lock = Any()
 
-        var value: EdgeLiveDataPendingValue? = value
+        var value: EdgeValue? = value
             private set
 
         init {
@@ -70,7 +70,7 @@ class EdgeLiveDataSyncService : Service() {
         }
 
         override fun onCallbackDied(
-            callback: IEdgeLiveDataSyncClient,
+            callback: IEdgeSyncClient,
             cookie: Any?
         ) {
             synchronized(lock) {
@@ -81,7 +81,7 @@ class EdgeLiveDataSyncService : Service() {
         }
 
         fun notifyDataChanged(
-            newValue: EdgeLiveDataPendingValue,
+            newValue: EdgeValue,
             ignoreId: String
         ) {
             synchronized(lock) {
