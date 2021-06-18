@@ -21,15 +21,14 @@ class EdgeSyncService : Service() {
             synchronized(lock) {
                 val group = groups[dataId]
                 if (group != null) {
-                    if (value.version > (group.value?.version ?: 0)) {
-                        if (group.registeredCallbackCount > 0) {
-                            group.notifyDataChanged(value, instanceId)
-                        }
+                    val oldValue = group.value
+                    if (oldValue == null || value.version > oldValue.version) {
+                        group.notifyDataChanged(value, instanceId)
                     } else {
                         RemoteCallbackList<IEdgeSyncClient>().apply {
                             register(client)
                             beginBroadcast()
-                            getBroadcastItem(0).onRemoteChanged(group.value)
+                            getBroadcastItem(0).onRemoteChanged(oldValue)
                             finishBroadcast()
                             unregister(client)
                         }
@@ -46,7 +45,7 @@ class EdgeSyncService : Service() {
             instanceId: String,
             value: EdgeValue
         ) {
-            (synchronized(lock) { groups[dataId] } ?: return).notifyDataChanged(value, instanceId)
+            (synchronized(lock) { groups[dataId] })?.notifyDataChanged(value, instanceId)
         }
     }
 
@@ -63,6 +62,7 @@ class EdgeSyncService : Service() {
         private val lock = Any()
 
         var value: EdgeValue? = value
+            get() = synchronized(lock) { field }
             private set
 
         init {
