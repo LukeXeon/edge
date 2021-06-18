@@ -52,6 +52,6 @@ class EdgeSyncService : Service() {
     }
 
     companion object {
-        private const val TAG = "EdgeLiveDataSyncService"
+        private const val TAG = "EdgeSyncService"
     }
 }
