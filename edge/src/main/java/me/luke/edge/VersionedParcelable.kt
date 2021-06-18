@@ -1,9 +1,11 @@
 package me.luke.edge
 
-import android.app.Application
+import android.content.Context
+import android.os.Build
 import android.os.Parcel
 import android.os.Parcelable
 import android.util.Log
+import android.view.inspector.WindowInspector
 
 class VersionedParcelable(
         val version: Long,
@@ -37,10 +39,17 @@ class VersionedParcelable(
                         .apply { isAccessible = true }.get(null)
                 activityThreadClass.getDeclaredField("mInitialApplication")
                         .apply { isAccessible = true }
-                        .get(current) as Application
+                        .get(current) as Context
             } catch (e: Throwable) {
                 Log.e(TAG, "get application", e)
-                null
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    WindowInspector.getGlobalWindowViews()
+                            .firstOrNull()
+                            ?.context
+                            ?.applicationContext
+                } else {
+                    null
+                }
             }
         }
 
