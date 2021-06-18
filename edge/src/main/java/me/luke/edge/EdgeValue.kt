@@ -14,6 +14,7 @@ class EdgeValue(
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeLong(version)
+        parcel.writeParcelable(data, flags)
     }
 
     override fun describeContents(): Int {
