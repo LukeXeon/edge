@@ -8,14 +8,14 @@ import android.util.Log
 import android.view.inspector.WindowInspector
 
 class VersionedParcelable(
-        val version: Long,
-        val data: Parcelable?
+    val version: Long,
+    val data: Parcelable?
 ) : Parcelable {
 
     constructor(parcel: Parcel) : this(
-            parcel.readLong(),
-            parcel.readParcelable(getClassLoader())) {
-    }
+        parcel.readLong(),
+        parcel.readParcelable(getClassLoader())
+    )
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeLong(version)
@@ -35,18 +35,18 @@ class VersionedParcelable(
                 @Suppress("PrivateApi")
                 val activityThreadClass = Class.forName("android.app.ActivityThread")
                 val current = activityThreadClass
-                        .getDeclaredField("sCurrentActivityThread")
-                        .apply { isAccessible = true }.get(null)
+                    .getDeclaredField("sCurrentActivityThread")
+                    .apply { isAccessible = true }.get(null)
                 activityThreadClass.getDeclaredField("mInitialApplication")
-                        .apply { isAccessible = true }
-                        .get(current) as Context
+                    .apply { isAccessible = true }
+                    .get(current) as Context
             } catch (e: Throwable) {
                 Log.e(TAG, "get application", e)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     WindowInspector.getGlobalWindowViews()
-                            .firstOrNull()
-                            ?.context
-                            ?.applicationContext
+                        .firstOrNull()
+                        ?.context
+                        ?.applicationContext
                 } else {
                     null
                 }
@@ -54,7 +54,9 @@ class VersionedParcelable(
         }
 
         private fun getClassLoader(): ClassLoader? {
-            return application?.classLoader ?: VersionedParcelable::class.java.classLoader
+            return application?.classLoader
+                ?: VersionedParcelable::class.java.classLoader
+                ?: ClassLoader.getSystemClassLoader()
         }
 
         override fun createFromParcel(parcel: Parcel): VersionedParcelable {

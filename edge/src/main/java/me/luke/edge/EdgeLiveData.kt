@@ -9,14 +9,14 @@ import android.os.*
 import android.util.Log
 import androidx.annotation.*
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import java.util.*
 
 class EdgeLiveData<T : Parcelable?>(
     context: Context,
     @IdRes
     private val dataId: Int
-) : LiveData<T>(), ServiceConnection {
-    private val instanceId = UUID.randomUUID().toString()
+) : MutableLiveData<T>(), ServiceConnection {
     private val appContext = context.applicationContext
     private val dataLock = Any()
     private val handleReceiveRunnable = Runnable {
@@ -27,19 +27,22 @@ class EdgeLiveData<T : Parcelable?>(
             notifyRemoteDataChanged()
         }
     }
-    private val stub = object : IEdgeSyncCallback.Stub() {
-        override fun onReceive(value: VersionedParcelable, fromNew: Boolean) {
-            if (setPendingData(value)) {
-                MAIN_HANDLER.post(
-                    if (fromNew)
-                        handleReceiveFromNewRunnable
-                    else
-                        handleReceiveRunnable
-                )
+    private val instanceId by lazy { ParcelUuid(UUID.randomUUID()) }
+    private val stub by lazy {
+        object : IEdgeSyncCallback.Stub() {
+            override fun onReceive(value: VersionedParcelable, fromNew: Boolean) {
+                if (setPendingData(value)) {
+                    MAIN_HANDLER.post(
+                        if (fromNew)
+                            handleReceiveFromNewRunnable
+                        else
+                            handleReceiveRunnable
+                    )
+                }
             }
         }
     }
-    private var pendingData: Any? = null
+    private var pendingData: Any? = PENDING_NO_SET
     private var service: IEdgeSyncService? = null
     private var lastUpdate: Long = 0
 
@@ -59,13 +62,8 @@ class EdgeLiveData<T : Parcelable?>(
         }
     }
 
-    @AnyThread
-    public override fun postValue(value: T) {
-        super.postValue(value)
-    }
-
     @MainThread
-    public override fun setValue(value: T) {
+    override fun setValue(value: T) {
         super.setValue(value)
         lastUpdate = SystemClock.uptimeMillis()
         notifyRemoteDataChanged()
@@ -141,7 +139,7 @@ class EdgeLiveData<T : Parcelable?>(
     }
 
     companion object {
-        private val MAIN_HANDLER = Handler(Looper.getMainLooper())
+        private val MAIN_HANDLER by lazy { Handler(Looper.getMainLooper()) }
         private val PENDING_NO_SET = Any()
         private const val TAG = "EdgeLiveData"
     }

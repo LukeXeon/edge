@@ -3,10 +3,12 @@ package me.luke.edge
 import android.app.Service
 import android.content.Intent
 import android.os.IBinder
+import android.os.ParcelUuid
 import android.os.RemoteCallbackList
 import android.os.RemoteException
 import android.util.Log
 import android.util.SparseArray
+import java.util.*
 
 class EdgeSyncService : Service() {
     private val callbacks = SparseArray<RemoteCallbackList<IEdgeSyncCallback>>()
@@ -14,7 +16,7 @@ class EdgeSyncService : Service() {
 
         override fun setCallback(
             dataId: Int,
-            instanceId: String,
+            instanceId: ParcelUuid,
             client: IEdgeSyncCallback
         ) {
             val callbackList = synchronized(callbacks) {
@@ -25,21 +27,22 @@ class EdgeSyncService : Service() {
                 }
                 return@synchronized value
             }
-            callbackList.register(client, instanceId)
+            callbackList.register(client, instanceId.uuid)
         }
 
         override fun notifyDataChanged(
             dataId: Int,
-            instanceId: String?,
+            instanceId: ParcelUuid?,
             value: VersionedParcelable
         ) {
+            val ignoreId = instanceId?.uuid
             val callbackList = synchronized(callbacks) { callbacks[dataId] } ?: return
             synchronized(callbackList) {
                 val count = callbackList.beginBroadcast()
                 for (i in 0 until count) {
                     val callback = callbackList.getBroadcastItem(i)
-                    val callbackId = callbackList.getBroadcastCookie(i) as? String
-                    if (callbackId != instanceId) {
+                    val callbackId = callbackList.getBroadcastCookie(i) as? UUID
+                    if (callbackId != ignoreId) {
                         try {
                             callback.onReceive(value, false)
                         } catch (e: RemoteException) {
