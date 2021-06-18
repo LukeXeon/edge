@@ -21,25 +21,22 @@ class EdgeLiveData<T : Parcelable?>(
     private val instanceId = UUID.randomUUID().toString()
     private val appContext = context.applicationContext
     private val dataLock = Any()
-    private val handleDataChangedRunnable = Runnable {
+    private val handleReceiveRunnable = Runnable {
         handleRemoteChanged()
     }
-    private val handleNewClientConnectedRunnable = Runnable {
+    private val handleReceiveFromNewRunnable = Runnable {
         if (!handleRemoteChanged()) {
             notifyRemoteDataChanged()
         }
     }
-    private val stub = object : IEdgeSyncClient.Stub() {
-
-        override fun onDataChanged(value: EdgeValue) {
+    private val stub = object : IEdgeSyncCallback.Stub() {
+        override fun onReceive(value: EdgeValue, fromNew: Boolean) {
             if (setPendingData(value)) {
-                MAIN_HANDLER.post(handleDataChangedRunnable)
-            }
-        }
-
-        override fun onNewClientConnected(value: EdgeValue) {
-            if (setPendingData(value)) {
-                MAIN_HANDLER.post(handleNewClientConnectedRunnable)
+                MAIN_HANDLER.post(if (fromNew)
+                    handleReceiveFromNewRunnable
+                else
+                    handleReceiveRunnable
+                )
             }
         }
     }
@@ -90,7 +87,8 @@ class EdgeLiveData<T : Parcelable?>(
             this.service = IEdgeSyncService.Stub
                     .asInterface(service)
                     .apply {
-                        attachToService(EdgeRequest(dataId, instanceId, EdgeValue(lastUpdate, value)), stub)
+                        notifyDataChanged(dataId, instanceId, EdgeValue(lastUpdate, value))
+                        setCallback(dataId, instanceId, stub)
                     }
         } catch (e: RemoteException) {
             Log.w(TAG, e)
@@ -137,7 +135,7 @@ class EdgeLiveData<T : Parcelable?>(
     private fun notifyRemoteDataChanged() {
         val service = service ?: return
         try {
-            service.notifyDataChanged(EdgeRequest(dataId, instanceId, EdgeValue(lastUpdate, value)))
+            service.notifyDataChanged(dataId, instanceId, EdgeValue(lastUpdate, value))
         } catch (e: RemoteException) {
             Log.w(TAG, e)
         }

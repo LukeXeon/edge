@@ -9,37 +9,25 @@ import android.util.Log
 
 
 class EdgeSyncService : Service() {
-    private val callbacks = HashMap<String, RemoteCallbackList<IEdgeSyncClient>>()
+    private val callbacks = HashMap<String, RemoteCallbackList<IEdgeSyncCallback>>()
     private val stub = object : IEdgeSyncService.Stub() {
-        override fun attachToService(
-                request: EdgeRequest,
-                client: IEdgeSyncClient
+
+        override fun setCallback(
+                dataId: String,
+                instanceId: String,
+                client: IEdgeSyncCallback
         ) {
-            val dataId = request.dataId
-            val instanceId = request.instanceId
-            val value = request.value
             val callbackList = synchronized(callbacks) {
                 callbacks.getOrPut(dataId) { RemoteCallbackList() }
             }
-            synchronized(callbackList) {
-                val count = callbackList.beginBroadcast()
-                for (i in 0 until count) {
-                    val callback = callbackList.getBroadcastItem(i)
-                    try {
-                        callback.onNewClientConnected(value)
-                    } catch (e: RemoteException) {
-                        Log.w(TAG, e)
-                    }
-                }
-                callbackList.finishBroadcast()
-                callbackList.register(client, instanceId)
-            }
+            callbackList.register(client, instanceId)
         }
 
-        override fun notifyDataChanged(request: EdgeRequest) {
-            val dataId = request.dataId
-            val instanceId = request.instanceId
-            val value = request.value
+        override fun notifyDataChanged(
+                dataId: String,
+                instanceId: String,
+                value: EdgeValue
+        ) {
             val callbackList = synchronized(callbacks) { callbacks[dataId] } ?: return
             synchronized(callbackList) {
                 val count = callbackList.beginBroadcast()
@@ -48,7 +36,7 @@ class EdgeSyncService : Service() {
                     val callbackId = callbackList.getBroadcastCookie(i) as? String
                     if (callbackId != instanceId) {
                         try {
-                            callback.onDataChanged(value)
+                            callback.onReceive(value, false)
                         } catch (e: RemoteException) {
                             Log.w(TAG, e)
                         }
