@@ -28,15 +28,6 @@ class EdgeLiveData<T : Parcelable?>(
     }
     private val stub = object : IEdgeSyncClient.Stub() {
 
-        private fun setPendingData(value: EdgeValue): Boolean {
-            var postTask: Boolean
-            synchronized(dataLock) {
-                postTask = pendingData == PENDING_NO_SET
-                pendingData = value
-            }
-            return postTask
-        }
-
         override fun onRemoteChanged(value: EdgeValue) {
             if (setPendingData(value)) {
                 MAIN_HANDLER.post(handleRemoteChangedRunnable)
@@ -110,6 +101,15 @@ class EdgeLiveData<T : Parcelable?>(
         super.setValue(value)
         lastUpdate = SystemClock.uptimeMillis()
         notifyDataChanged()
+    }
+
+    private fun setPendingData(value: EdgeValue): Boolean {
+        var postTask: Boolean
+        synchronized(dataLock) {
+            postTask = pendingData == PENDING_NO_SET
+            pendingData = value
+        }
+        return postTask
     }
 
     private fun handleRemoteChanged(): Boolean {
