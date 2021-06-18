@@ -7,16 +7,14 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
 import android.util.Log
-import androidx.annotation.AnyThread
-import androidx.annotation.MainThread
-import androidx.annotation.RequiresApi
-import androidx.annotation.RestrictTo
+import androidx.annotation.*
 import androidx.lifecycle.LiveData
 import java.util.*
 
 class EdgeLiveData<T : Parcelable?>(
-        context: Context,
-        private val dataId: String
+    context: Context,
+    @IdRes
+    private val dataId: Int
 ) : LiveData<T>(), ServiceConnection {
     private val instanceId = UUID.randomUUID().toString()
     private val appContext = context.applicationContext
@@ -32,10 +30,11 @@ class EdgeLiveData<T : Parcelable?>(
     private val stub = object : IEdgeSyncCallback.Stub() {
         override fun onReceive(value: VersionedParcelable, fromNew: Boolean) {
             if (setPendingData(value)) {
-                MAIN_HANDLER.post(if (fromNew)
-                    handleReceiveFromNewRunnable
-                else
-                    handleReceiveRunnable
+                MAIN_HANDLER.post(
+                    if (fromNew)
+                        handleReceiveFromNewRunnable
+                    else
+                        handleReceiveRunnable
                 )
             }
         }
@@ -44,18 +43,12 @@ class EdgeLiveData<T : Parcelable?>(
     private var service: IEdgeSyncService? = null
     private var lastUpdate: Long = 0
 
-    init {
-        if (dataId.isBlank()) {
-            throw IllegalArgumentException("dataId must not be empty")
-        }
-    }
-
     override fun onActive() {
         if (service == null) {
             appContext.bindService(
-                    Intent(appContext, EdgeSyncService::class.java),
-                    this,
-                    Context.BIND_AUTO_CREATE
+                Intent(appContext, EdgeSyncService::class.java),
+                this,
+                Context.BIND_AUTO_CREATE
             )
         }
     }
@@ -81,15 +74,18 @@ class EdgeLiveData<T : Parcelable?>(
     @TargetApi(Int.MAX_VALUE)
     @RequiresApi(Int.MAX_VALUE)
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    @Deprecated("Part of the ServiceConnection interface.  Do not call.", level = DeprecationLevel.HIDDEN)
+    @Deprecated(
+        "Part of the ServiceConnection interface.  Do not call.",
+        level = DeprecationLevel.HIDDEN
+    )
     override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
         try {
             this.service = IEdgeSyncService.Stub
-                    .asInterface(service)
-                    .apply {
-                        notifyDataChanged(dataId, null, VersionedParcelable(lastUpdate, value))
-                        setCallback(dataId, instanceId, stub)
-                    }
+                .asInterface(service)
+                .apply {
+                    notifyDataChanged(dataId, null, VersionedParcelable(lastUpdate, value))
+                    setCallback(dataId, instanceId, stub)
+                }
         } catch (e: RemoteException) {
             Log.w(TAG, e)
         }
@@ -98,7 +94,10 @@ class EdgeLiveData<T : Parcelable?>(
     @TargetApi(Int.MAX_VALUE)
     @RequiresApi(Int.MAX_VALUE)
     @RestrictTo(RestrictTo.Scope.LIBRARY)
-    @Deprecated("Part of the ServiceConnection interface.  Do not call.", level = DeprecationLevel.HIDDEN)
+    @Deprecated(
+        "Part of the ServiceConnection interface.  Do not call.",
+        level = DeprecationLevel.HIDDEN
+    )
     override fun onServiceDisconnected(name: ComponentName?) {
         service = null
         if (hasActiveObservers()) {

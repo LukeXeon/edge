@@ -5,8 +5,8 @@ import me.luke.edge.IEdgeSyncCallback;
 
 interface IEdgeSyncService {
 
-    void notifyDataChanged(in String dataId, in String instanceId, in VersionedParcelable value);
+    void notifyDataChanged(in int dataId, in String instanceId, in VersionedParcelable value);
 
-    void setCallback(in String dataId, in String instanceId, in IEdgeSyncCallback client);
+    void setCallback(in int dataId, in String instanceId, in IEdgeSyncCallback client);
 
 }

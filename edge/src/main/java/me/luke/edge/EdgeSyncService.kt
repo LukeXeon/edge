@@ -6,27 +6,32 @@ import android.os.IBinder
 import android.os.RemoteCallbackList
 import android.os.RemoteException
 import android.util.Log
-
+import android.util.SparseArray
 
 class EdgeSyncService : Service() {
-    private val callbacks = HashMap<String, RemoteCallbackList<IEdgeSyncCallback>>()
+    private val callbacks = SparseArray<RemoteCallbackList<IEdgeSyncCallback>>()
     private val stub = object : IEdgeSyncService.Stub() {
 
         override fun setCallback(
-                dataId: String,
-                instanceId: String,
-                client: IEdgeSyncCallback
+            dataId: Int,
+            instanceId: String,
+            client: IEdgeSyncCallback
         ) {
             val callbackList = synchronized(callbacks) {
-                callbacks.getOrPut(dataId) { RemoteCallbackList() }
+                var value = callbacks.get(dataId)
+                if (value == null) {
+                    value = RemoteCallbackList()
+                    callbacks.put(dataId, value)
+                }
+                return@synchronized value
             }
             callbackList.register(client, instanceId)
         }
 
         override fun notifyDataChanged(
-                dataId: String,
-                instanceId: String?,
-                value: VersionedParcelable
+            dataId: Int,
+            instanceId: String?,
+            value: VersionedParcelable
         ) {
             val callbackList = synchronized(callbacks) { callbacks[dataId] } ?: return
             synchronized(callbackList) {
