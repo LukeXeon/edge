@@ -10,7 +10,7 @@ import android.util.Log
 
 class EdgeSyncService : Service() {
     private val lock = Any()
-    private val groups = HashMap<String, ClientGroup>()
+    private val callbacks = HashMap<String, RemoteCallbackList<IEdgeSyncClient>>()
     private val stub = object : IEdgeSyncService.Stub() {
         override fun onClientConnected(
             dataId: String,
@@ -18,25 +18,20 @@ class EdgeSyncService : Service() {
             value: EdgeValue,
             client: IEdgeSyncClient
         ) {
-            synchronized(lock) {
-                val group = groups[dataId]
-                if (group != null) {
-                    val oldValue = group.value
-                    if (oldValue == null || value.version > oldValue.version) {
-                        group.notifyDataChanged(value, instanceId)
-                    } else {
-                        RemoteCallbackList<IEdgeSyncClient>().apply {
-                            register(client)
-                            beginBroadcast()
-                            getBroadcastItem(0).onRemoteChanged(oldValue)
-                            finishBroadcast()
-                            unregister(client)
-                        }
+            val callbackList =
+                synchronized(lock) { callbacks.getOrPut(dataId) { RemoteCallbackList() } }
+            synchronized(callbackList) {
+                val count = callbackList.beginBroadcast()
+                for (i in 0 until count) {
+                    val callback = callbackList.getBroadcastItem(i)
+                    try {
+                        callback.onNewClientConnected(value)
+                    } catch (e: RemoteException) {
+                        Log.w(TAG, e)
                     }
-                    group.register(client, instanceId)
-                } else {
-                    groups[dataId] = ClientGroup(client, instanceId, value)
                 }
+                callbackList.finishBroadcast()
+                callbackList.register(client, instanceId)
             }
         }
 
@@ -45,62 +40,27 @@ class EdgeSyncService : Service() {
             instanceId: String,
             value: EdgeValue
         ) {
-            (synchronized(lock) { groups[dataId] })?.notifyDataChanged(value, instanceId)
-        }
-    }
-
-    override fun onBind(intent: Intent): IBinder? {
-        return stub
-    }
-
-    private class ClientGroup(
-        client: IEdgeSyncClient,
-        instanceId: String,
-        value: EdgeValue
-    ) : RemoteCallbackList<IEdgeSyncClient>() {
-
-        private val lock = Any()
-
-        var value: EdgeValue? = value
-            get() = synchronized(lock) { field }
-            private set
-
-        init {
-            register(client, instanceId)
-        }
-
-        override fun onCallbackDied(
-            callback: IEdgeSyncClient,
-            cookie: Any?
-        ) {
-            synchronized(lock) {
-                if (registeredCallbackCount == 0) {
-                    value = null
-                }
-            }
-        }
-
-        fun notifyDataChanged(
-            newValue: EdgeValue,
-            ignoreId: String
-        ) {
-            synchronized(lock) {
-                value = newValue
-                val count = beginBroadcast()
+            val callbackList = synchronized(lock) { callbacks[dataId] } ?: return
+            synchronized(callbackList) {
+                val count = callbackList.beginBroadcast()
                 for (i in 0 until count) {
-                    val callback = getBroadcastItem(i)
-                    val callbackId = getBroadcastCookie(i) as? String
-                    if (callbackId != ignoreId) {
+                    val callback = callbackList.getBroadcastItem(i)
+                    val callbackId = callbackList.getBroadcastCookie(i) as? String
+                    if (callbackId != instanceId) {
                         try {
-                            callback.onRemoteChanged(newValue)
+                            callback.onRemoteChanged(value)
                         } catch (e: RemoteException) {
                             Log.w(TAG, e)
                         }
                     }
                 }
-                finishBroadcast()
+                callbackList.finishBroadcast()
             }
         }
+    }
+
+    override fun onBind(intent: Intent): IBinder? {
+        return stub
     }
 
     companion object {

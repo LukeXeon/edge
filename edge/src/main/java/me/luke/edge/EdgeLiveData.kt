@@ -11,7 +11,6 @@ import androidx.annotation.MainThread
 import androidx.lifecycle.LiveData
 import java.util.*
 
-
 class EdgeLiveData<T : Parcelable?>(
     context: Context,
     private val dataId: String
@@ -20,29 +19,34 @@ class EdgeLiveData<T : Parcelable?>(
     private val appContext = context.applicationContext
     private val dataLock = Any()
     private val handleRemoteChangedRunnable = Runnable {
-        var newValue: Any?
-        synchronized(dataLock) {
-            newValue = pendingData
-            pendingData = PENDING_NO_SET
-        }
-        val value = newValue as? EdgeValue ?: return@Runnable
-        if (lastUpdate < value.version) {
-            @Suppress("UNCHECKED_CAST")
-            super.setValue(value.data as T)
-            lastUpdate = value.version
+        handleRemoteChanged()
+    }
+    private val handleNewClientConnectedRunnable = Runnable {
+        if (!handleRemoteChanged()) {
+            notifyDataChanged()
         }
     }
     private val stub = object : IEdgeSyncClient.Stub() {
-        override fun onRemoteChanged(value: EdgeValue) {
+
+        private fun setPendingData(value: EdgeValue): Boolean {
             var postTask: Boolean
             synchronized(dataLock) {
                 postTask = pendingData == PENDING_NO_SET
                 pendingData = value
             }
-            if (!postTask) {
-                return
+            return postTask
+        }
+
+        override fun onRemoteChanged(value: EdgeValue) {
+            if (setPendingData(value)) {
+                MAIN_HANDLER.post(handleRemoteChangedRunnable)
             }
-            MAIN_HANDLER.post(handleRemoteChangedRunnable)
+        }
+
+        override fun onNewClientConnected(value: EdgeValue) {
+            if (setPendingData(value)) {
+                MAIN_HANDLER.post(handleNewClientConnectedRunnable)
+            }
         }
     }
     private val connection = object : ServiceConnection {
@@ -50,8 +54,8 @@ class EdgeLiveData<T : Parcelable?>(
             try {
                 this@EdgeLiveData.service = IEdgeSyncService.Stub
                     .asInterface(service)
-                    .also {
-                        it.onClientConnected(
+                    .apply {
+                        onClientConnected(
                             dataId,
                             instanceId,
                             EdgeValue(lastUpdate, value),
@@ -105,8 +109,30 @@ class EdgeLiveData<T : Parcelable?>(
     public override fun setValue(value: T) {
         super.setValue(value)
         lastUpdate = SystemClock.uptimeMillis()
+        notifyDataChanged()
+    }
+
+    private fun handleRemoteChanged(): Boolean {
+        var newValue: Any?
+        synchronized(dataLock) {
+            newValue = pendingData
+            pendingData = PENDING_NO_SET
+        }
+        val value = newValue as? EdgeValue ?: return false
+        return if (lastUpdate < value.version) {
+            @Suppress("UNCHECKED_CAST")
+            super.setValue(value.data as T)
+            lastUpdate = value.version
+            true
+        } else {
+            false
+        }
+    }
+
+    private fun notifyDataChanged() {
+        val s = service ?: return
         try {
-            (service ?: return).notifyDataChanged(
+            s.notifyDataChanged(
                 dataId,
                 instanceId,
                 EdgeValue(lastUpdate, value)
