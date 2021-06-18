@@ -7,6 +7,6 @@ interface IEdgeSyncService {
 
     void notifyDataChanged(in String dataId, in String instanceId, in EdgeValue value);
 
-    void onClientConnected(in String dataId, in String instanceId, in EdgeValue value, in IEdgeSyncClient client);
+    void attachToService(in String dataId, in String instanceId, in EdgeValue value, in IEdgeSyncClient client);
 
 }

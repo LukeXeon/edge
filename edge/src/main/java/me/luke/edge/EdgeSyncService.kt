@@ -11,14 +11,15 @@ import android.util.Log
 class EdgeSyncService : Service() {
     private val callbacks = HashMap<String, RemoteCallbackList<IEdgeSyncClient>>()
     private val stub = object : IEdgeSyncService.Stub() {
-        override fun onClientConnected(
-            dataId: String,
-            instanceId: String,
-            value: EdgeValue,
-            client: IEdgeSyncClient
+        override fun attachToService(
+                dataId: String,
+                instanceId: String,
+                value: EdgeValue,
+                client: IEdgeSyncClient
         ) {
-            val callbackList =
-                synchronized(callbacks) { callbacks.getOrPut(dataId) { RemoteCallbackList() } }
+            val callbackList = synchronized(callbacks) {
+                callbacks.getOrPut(dataId) { RemoteCallbackList() }
+            }
             synchronized(callbackList) {
                 val count = callbackList.beginBroadcast()
                 for (i in 0 until count) {
@@ -35,9 +36,9 @@ class EdgeSyncService : Service() {
         }
 
         override fun notifyDataChanged(
-            dataId: String,
-            instanceId: String,
-            value: EdgeValue
+                dataId: String,
+                instanceId: String,
+                value: EdgeValue
         ) {
             val callbackList = synchronized(callbacks) { callbacks[dataId] } ?: return
             synchronized(callbackList) {
@@ -58,7 +59,7 @@ class EdgeSyncService : Service() {
         }
     }
 
-    override fun onBind(intent: Intent): IBinder? {
+    override fun onBind(intent: Intent): IBinder {
         return stub
     }
 
