@@ -48,7 +48,7 @@ class EdgeSyncService : Service() {
                     val callbackId = callbackList.getBroadcastCookie(i) as? String
                     if (callbackId != instanceId) {
                         try {
-                            callback.onRemoteChanged(value)
+                            callback.onDataChanged(value)
                         } catch (e: RemoteException) {
                             Log.w(TAG, e)
                         }

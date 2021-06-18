@@ -21,7 +21,7 @@ class EdgeLiveData<T : Parcelable?>(
     private val instanceId = UUID.randomUUID().toString()
     private val appContext = context.applicationContext
     private val dataLock = Any()
-    private val handleRemoteChangedRunnable = Runnable {
+    private val handleDataChangedRunnable = Runnable {
         handleRemoteChanged()
     }
     private val handleNewClientConnectedRunnable = Runnable {
@@ -31,9 +31,9 @@ class EdgeLiveData<T : Parcelable?>(
     }
     private val stub = object : IEdgeSyncClient.Stub() {
 
-        override fun onRemoteChanged(value: EdgeValue) {
+        override fun onDataChanged(value: EdgeValue) {
             if (setPendingData(value)) {
-                MAIN_HANDLER.post(handleRemoteChangedRunnable)
+                MAIN_HANDLER.post(handleDataChangedRunnable)
             }
         }
 
