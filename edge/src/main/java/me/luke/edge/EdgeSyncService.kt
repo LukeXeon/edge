@@ -8,9 +8,12 @@ import android.os.RemoteCallbackList
 import android.os.RemoteException
 import android.util.Log
 import android.util.SparseArray
+import androidx.annotation.RestrictTo
 import java.util.*
 
-class EdgeSyncService : Service() {
+
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+internal open class EdgeSyncService : Service() {
     private val callbacks = SparseArray<RemoteCallbackList<IEdgeSyncCallback>>()
     private val stub = object : IEdgeSyncService.Stub() {
 

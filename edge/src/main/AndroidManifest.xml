@@ -1,9 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="me.luke.edge">
+    <permission
+        android:icon="@drawable/edge_permission_icon"
+        android:label="@string/edge_permission_label"
+        android:description="@string/edge_permission_description"
+        android:name="${applicationId}.USE_EDGE_LIVE_DATA"
+        android:protectionLevel="dangerous"/>
     <application>
         <service
             android:exported="false"
             android:name=".EdgeSyncService"/>
+        <service
+            android:permission="${applicationId}.USE_EDGE_LIVE_DATA"
+            android:exported="true"
+            android:name=".EdgeSyncServiceEx"/>
     </application>
 </manifest>

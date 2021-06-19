@@ -11,10 +11,13 @@ import androidx.lifecycle.MutableLiveData
 import java.lang.ref.WeakReference
 import java.util.*
 
-class EdgeLiveData<T : Parcelable?>(
+class EdgeLiveData<T : Parcelable?>
+@JvmOverloads
+constructor(
     context: Context,
     @IdRes
-    private val dataId: Int
+    private val dataId: Int,
+    exported: Boolean = false
 ) : MutableLiveData<T>() {
     private val dataLock = Any()
     private val handleReceiveRunnable = Runnable {
@@ -57,7 +60,7 @@ class EdgeLiveData<T : Parcelable?>(
     private var lastUpdate: Long = 0
 
     init {
-        Connection(context, this)
+        Connection(context, this, exported)
     }
 
     @MainThread
@@ -108,7 +111,8 @@ class EdgeLiveData<T : Parcelable?>(
 
     private class Connection(
         context: Context,
-        instance: EdgeLiveData<*>
+        instance: EdgeLiveData<*>,
+        private val exported: Boolean
     ) : ServiceConnection {
 
         private val reference = WeakReference(instance)
@@ -121,7 +125,13 @@ class EdgeLiveData<T : Parcelable?>(
 
         private fun connect() {
             appContext.bindService(
-                Intent(appContext, EdgeSyncService::class.java),
+                Intent(
+                    appContext,
+                    if (exported)
+                        EdgeSyncServiceEx::class.java
+                    else
+                        EdgeSyncService::class.java
+                ),
                 this,
                 Context.BIND_AUTO_CREATE
             )
