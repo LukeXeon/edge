@@ -4,6 +4,6 @@ import me.luke.edge.VersionedParcelable;
 
 interface IEdgeSyncCallback {
 
-    void onReceive(in VersionedParcelable value, in boolean fromNew);
+    void onReceive(in boolean fromNew, in VersionedParcelable value);
 
 }
