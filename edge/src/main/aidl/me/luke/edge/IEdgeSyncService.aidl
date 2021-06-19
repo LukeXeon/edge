@@ -8,6 +8,6 @@ interface IEdgeSyncService {
 
     void notifyDataChanged(in int dataId, in ParcelUuid instanceId, in VersionedParcelable value);
 
-    void setCallback(in int dataId, in ParcelUuid instanceId, in IEdgeSyncCallback client);
+    void onClientConnected(in int dataId, in ParcelUuid instanceId, in VersionedParcelable value, in IEdgeSyncCallback client);
 
 }

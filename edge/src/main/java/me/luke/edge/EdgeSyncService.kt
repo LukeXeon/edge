@@ -14,28 +14,41 @@ class EdgeSyncService : Service() {
     private val callbacks = SparseArray<RemoteCallbackList<IEdgeSyncCallback>>()
     private val stub = object : IEdgeSyncService.Stub() {
 
-        override fun setCallback(
+        override fun onClientConnected(
             dataId: Int,
             instanceId: ParcelUuid,
+            value: VersionedParcelable,
             client: IEdgeSyncCallback
         ) {
             val callbackList = synchronized(callbacks) {
-                var value = callbacks.get(dataId)
-                if (value == null) {
-                    value = RemoteCallbackList()
-                    callbacks.put(dataId, value)
+                var list = callbacks.get(dataId)
+                if (list == null) {
+                    list = RemoteCallbackList()
+                    callbacks.put(dataId, list)
                 }
-                return@synchronized value
+                return@synchronized list
+            }
+            synchronized(callbackList) {
+                val count = callbackList.beginBroadcast()
+                for (i in 0 until count) {
+                    val callback = callbackList.getBroadcastItem(i)
+                    try {
+                        callback.onReceive(value, true)
+                    } catch (e: RemoteException) {
+                        Log.w(TAG, e)
+                    }
+                }
+                callbackList.finishBroadcast()
             }
             callbackList.register(client, instanceId.uuid)
         }
 
         override fun notifyDataChanged(
             dataId: Int,
-            instanceId: ParcelUuid?,
+            instanceId: ParcelUuid,
             value: VersionedParcelable
         ) {
-            val ignoreId = instanceId?.uuid
+            val ignoreId = instanceId.uuid
             val callbackList = synchronized(callbacks) { callbacks[dataId] } ?: return
             synchronized(callbackList) {
                 val count = callbackList.beginBroadcast()

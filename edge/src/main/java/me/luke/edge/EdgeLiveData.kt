@@ -80,8 +80,12 @@ class EdgeLiveData<T : Parcelable?>(
             this.service = IEdgeSyncService.Stub
                 .asInterface(service)
                 .apply {
-                    notifyDataChanged(dataId, null, VersionedParcelable(lastUpdate, value))
-                    setCallback(dataId, instanceId, stub)
+                    onClientConnected(
+                        dataId,
+                        instanceId,
+                        VersionedParcelable(lastUpdate, value),
+                        stub
+                    )
                 }
         } catch (e: RemoteException) {
             Log.w(TAG, e)
