@@ -6,6 +6,8 @@ import android.os.Parcel
 import android.os.Parcelable
 import android.util.Log
 import android.view.inspector.WindowInspector
+import androidx.annotation.IdRes
+import java.util.*
 
 class VersionedParcelable(
     val version: Long,
@@ -14,7 +16,7 @@ class VersionedParcelable(
 
     constructor(parcel: Parcel) : this(
         parcel.readLong(),
-        parcel.readParcelable(getClassLoader())
+        parcel.readParcelable(getClassLoader()),
     )
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {

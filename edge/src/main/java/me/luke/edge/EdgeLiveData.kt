@@ -26,7 +26,7 @@ class EdgeLiveData<T : Parcelable?>(
             notifyRemoteDataChanged()
         }
     }
-    private val instanceId by lazy { ParcelUuid(UUID.randomUUID()) }
+    private val instanceId by lazy { UUID.randomUUID() }
     private val stub by lazy {
         object : IEdgeSyncCallback.Stub() {
             override fun onReceive(value: VersionedParcelable, fromNew: Boolean) {
@@ -82,7 +82,7 @@ class EdgeLiveData<T : Parcelable?>(
                 .apply {
                     onClientConnected(
                         dataId,
-                        instanceId,
+                        ParcelUuid(instanceId),
                         VersionedParcelable(lastUpdate, value),
                         stub
                     )
@@ -135,7 +135,7 @@ class EdgeLiveData<T : Parcelable?>(
     private fun notifyRemoteDataChanged() {
         val service = service ?: return
         try {
-            service.notifyDataChanged(dataId, instanceId, VersionedParcelable(lastUpdate, value))
+            service.notifyDataChanged(dataId, ParcelUuid(instanceId), VersionedParcelable(lastUpdate, value))
         } catch (e: RemoteException) {
             Log.w(TAG, e)
         }
