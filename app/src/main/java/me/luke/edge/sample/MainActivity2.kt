@@ -1,11 +1,13 @@
 package me.luke.edge.sample
 
+import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.ParcelUuid
 import android.widget.TextView
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import me.luke.edge.EdgeLiveData
-import java.util.*
 
 class MainActivity2 : AppCompatActivity() {
 
@@ -18,6 +20,17 @@ class MainActivity2 : AppCompatActivity() {
         data2 = EdgeLiveData(this, R.id.text)
         data2.observe(this) {
             text.text = it.uuid.toString()
+        }
+        if (ContextCompat.checkSelfPermission(
+                this,
+                EdgeLiveData.getPackagePermissionName(this)
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(EdgeLiveData.getPackagePermissionName(this)),
+                10086
+            )
         }
     }
 }
