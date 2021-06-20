@@ -20,11 +20,7 @@ constructor(
     exported: Boolean = false
 ) : MutableLiveData<T>() {
     private val dataLock = Any()
-    private val handleReceiveRunnable = Runnable {
-        if (!handleRemoteChanged()) {
-            notifyRemoteDataChanged()
-        }
-    }
+    private val handleReceiveRunnable by lazy { HandleReceiveRunnable(this) }
     private val instanceId by lazy { ParcelUuid(UUID.randomUUID()) }
     private val stub by lazy {
         object : IEdgeSyncCallback.Stub() {
@@ -64,7 +60,7 @@ constructor(
         notifyRemoteDataChanged()
     }
 
-    private fun handleRemoteChanged(): Boolean {
+    internal fun handleRemoteChanged(): Boolean {
         var newValue: Any?
         synchronized(dataLock) {
             newValue = pendingData
@@ -85,7 +81,7 @@ constructor(
         }
     }
 
-    private fun notifyRemoteDataChanged() {
+    internal fun notifyRemoteDataChanged() {
         val service = service ?: return
         try {
             service.notifyDataChanged(
@@ -95,6 +91,18 @@ constructor(
             )
         } catch (e: RemoteException) {
             Log.w(TAG, e)
+        }
+    }
+
+    private class HandleReceiveRunnable(instance: EdgeLiveData<*>) : Runnable {
+
+        private val reference = WeakReference(instance)
+
+        override fun run() {
+            val instance = reference.get() ?: return
+            if (!instance.handleRemoteChanged()) {
+                instance.notifyRemoteDataChanged()
+            }
         }
     }
 
