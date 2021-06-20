@@ -66,7 +66,7 @@ constructor(
     @MainThread
     override fun setValue(value: T) {
         super.setValue(value)
-        lastUpdate = SystemClock.uptimeMillis()
+        lastUpdate = SystemClock.elapsedRealtimeNanos()
         notifyRemoteDataChanged()
     }
 
