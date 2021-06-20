@@ -12,10 +12,10 @@ internal class PendingParcelable : VersionedParcelable {
     constructor(
         version: Long,
         data: Parcelable?,
-        fromNew: Boolean,
+        isFromNew: Boolean,
         pid: Int
     ) : super(version, data) {
-        this.isFromNew = fromNew
+        this.isFromNew = isFromNew
         this.pid = pid
     }
 
