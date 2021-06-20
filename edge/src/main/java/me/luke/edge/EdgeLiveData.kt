@@ -6,10 +6,10 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.*
 import android.util.Log
-import androidx.annotation.*
+import androidx.annotation.IdRes
+import androidx.annotation.MainThread
 import androidx.lifecycle.MutableLiveData
 import java.lang.ref.WeakReference
-import java.util.*
 
 class EdgeLiveData<T : Parcelable?>
 @JvmOverloads
@@ -26,7 +26,7 @@ constructor(
             override fun onReceive(value: PendingParcelable) {
                 var postTask: Boolean
                 synchronized(dataLock) {
-                    postTask = pendingData == PENDING_NO_SET
+                    postTask = pendingData == Unit
                     pendingData = value
                 }
                 if (postTask) {
@@ -35,7 +35,7 @@ constructor(
             }
         }
     }
-    private var pendingData: Any? = PENDING_NO_SET
+    private var pendingData: Any? = Unit
     private var instanceId: ParcelUuid? = null
     private var service: IEdgeSyncService? = null
         set(newValue) {
@@ -63,7 +63,7 @@ constructor(
         var newValue: Any?
         synchronized(dataLock) {
             newValue = pendingData
-            pendingData = PENDING_NO_SET
+            pendingData = Unit
         }
         val value = newValue as? PendingParcelable ?: return false
         val pid = value.pid
@@ -163,7 +163,6 @@ constructor(
         }
 
         private val MAIN_HANDLER = Handler(Looper.getMainLooper())
-        private val PENDING_NO_SET = Any()
         private const val TAG = "EdgeLiveData"
     }
 
