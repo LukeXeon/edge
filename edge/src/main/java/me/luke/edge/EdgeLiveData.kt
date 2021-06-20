@@ -161,6 +161,11 @@ constructor(
     }
 
     companion object {
+        @JvmStatic
+        fun getPackagePermissionName(context: Context): String {
+            return "${context.packageName}.USE_EDGE_LIVE_DATA"
+        }
+
         private val MAIN_HANDLER by lazy { Handler(Looper.getMainLooper()) }
         private val PENDING_NO_SET = Any()
         private const val TAG = "EdgeLiveData"
