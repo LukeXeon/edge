@@ -21,9 +21,6 @@ constructor(
 ) : MutableLiveData<T>() {
     private val dataLock = Any()
     private val handleReceiveRunnable = Runnable {
-        handleRemoteChanged()
-    }
-    private val handleReceiveFromNewRunnable = Runnable {
         if (!handleRemoteChanged()) {
             notifyRemoteDataChanged()
         }
@@ -31,17 +28,14 @@ constructor(
     private val instanceId by lazy { ParcelUuid(UUID.randomUUID()) }
     private val stub by lazy {
         object : IEdgeSyncCallback.Stub() {
-            override fun onReceive(
-                fromNew: Boolean,
-                value: VersionedParcelable
-            ) {
-                if (setPendingData(value)) {
-                    MAIN_HANDLER.post(
-                        if (fromNew)
-                            handleReceiveFromNewRunnable
-                        else
-                            handleReceiveRunnable
-                    )
+            override fun onReceive(value: PendingParcelable) {
+                var postTask: Boolean
+                synchronized(dataLock) {
+                    postTask = pendingData == PENDING_NO_SET
+                    pendingData = value
+                }
+                if (postTask) {
+                    MAIN_HANDLER.post(handleReceiveRunnable)
                 }
             }
         }
@@ -70,27 +64,22 @@ constructor(
         notifyRemoteDataChanged()
     }
 
-    private fun setPendingData(value: VersionedParcelable): Boolean {
-        var postTask: Boolean
-        synchronized(dataLock) {
-            postTask = pendingData == PENDING_NO_SET
-            pendingData = value
-        }
-        return postTask
-    }
-
     private fun handleRemoteChanged(): Boolean {
         var newValue: Any?
         synchronized(dataLock) {
             newValue = pendingData
             pendingData = PENDING_NO_SET
         }
-        val value = newValue as? VersionedParcelable ?: return false
-        return if (lastUpdate < value.version) {
+        val value = newValue as? PendingParcelable ?: return false
+        val pid = value.pid
+        val version = value.version
+        val data = value.data
+        val fromNew = value.fromNew
+        return if (lastUpdate < version || (lastUpdate == version && pid < Process.myPid())) {
             @Suppress("UNCHECKED_CAST")
-            super.setValue(value.data as T)
-            lastUpdate = value.version
-            true
+            super.setValue(data as T)
+            lastUpdate = version
+            fromNew
         } else {
             false
         }

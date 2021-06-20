@@ -6,8 +6,10 @@ import android.os.Parcel
 import android.os.Parcelable
 import android.util.Log
 import android.view.inspector.WindowInspector
+import androidx.annotation.RestrictTo
 
-internal class VersionedParcelable(
+@RestrictTo(RestrictTo.Scope.LIBRARY)
+internal open class VersionedParcelable(
     val version: Long,
     val data: Parcelable?
 ) : Parcelable {

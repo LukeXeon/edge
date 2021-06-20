@@ -2,10 +2,7 @@ package me.luke.edge
 
 import android.app.Service
 import android.content.Intent
-import android.os.IBinder
-import android.os.ParcelUuid
-import android.os.RemoteCallbackList
-import android.os.RemoteException
+import android.os.*
 import android.util.Log
 import android.util.SparseArray
 import androidx.annotation.RestrictTo
@@ -23,6 +20,7 @@ internal open class EdgeSyncService : Service() {
             value: VersionedParcelable,
             callback: IEdgeSyncCallback
         ) {
+            val pid = Binder.getCallingPid()
             val callbackList = synchronized(callbacks) {
                 var list = callbacks.get(dataId)
                 if (list == null) {
@@ -36,7 +34,9 @@ internal open class EdgeSyncService : Service() {
                 for (i in 0 until count) {
                     val cb = callbackList.getBroadcastItem(i)
                     try {
-                        cb.onReceive(true, value)
+                        cb.onReceive(
+                            PendingParcelable(value.version, value.data, true, pid)
+                        )
                     } catch (e: RemoteException) {
                         Log.w(logTag, e)
                     }
@@ -51,6 +51,7 @@ internal open class EdgeSyncService : Service() {
             instanceId: ParcelUuid,
             value: VersionedParcelable
         ) {
+            val pid = Binder.getCallingPid()
             val ignoreId = instanceId.uuid
             val callbackList = synchronized(callbacks) { callbacks[dataId] } ?: return
             synchronized(callbackList) {
@@ -60,7 +61,9 @@ internal open class EdgeSyncService : Service() {
                     val callbackId = callbackList.getBroadcastCookie(i) as? UUID
                     if (callbackId != ignoreId) {
                         try {
-                            callback.onReceive(false, value)
+                            callback.onReceive(
+                                PendingParcelable(value.version, value.data, false, pid)
+                            )
                         } catch (e: RemoteException) {
                             Log.w(logTag, e)
                         }
