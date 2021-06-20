@@ -37,6 +37,7 @@ constructor(
         }
     }
     private var pendingData: Any? = PENDING_NO_SET
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
     internal var service: IEdgeSyncService? = null
         set(newValue) {
             field = newValue
