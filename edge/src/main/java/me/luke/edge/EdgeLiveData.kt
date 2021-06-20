@@ -60,6 +60,7 @@ constructor(
         notifyRemoteDataChanged()
     }
 
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
     internal fun handleRemoteChanged(): Boolean {
         var newValue: Any?
         synchronized(dataLock) {
@@ -81,6 +82,7 @@ constructor(
         }
     }
 
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
     internal fun notifyRemoteDataChanged() {
         val service = service ?: return
         try {
