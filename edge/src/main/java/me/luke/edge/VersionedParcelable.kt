@@ -16,7 +16,7 @@ internal open class VersionedParcelable(
 
     constructor(parcel: Parcel) : this(
         parcel.readLong(),
-        parcel.readParcelable(getClassLoader()),
+        parcel.readParcelable(application?.classLoader),
     )
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
@@ -53,12 +53,6 @@ internal open class VersionedParcelable(
                     null
                 }
             }
-        }
-
-        private fun getClassLoader(): ClassLoader? {
-            return application?.classLoader
-                ?: VersionedParcelable::class.java.classLoader
-                ?: ClassLoader.getSystemClassLoader()
         }
 
         override fun createFromParcel(parcel: Parcel): VersionedParcelable {
