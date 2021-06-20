@@ -37,8 +37,7 @@ constructor(
         }
     }
     private var pendingData: Any? = PENDING_NO_SET
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    internal var service: IEdgeSyncService? = null
+    private var service: IEdgeSyncService? = null
         set(newValue) {
             field = newValue
             newValue?.setCallback(
@@ -61,8 +60,7 @@ constructor(
         notifyRemoteDataChanged()
     }
 
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    internal fun handleRemoteChanged(): Boolean {
+    private fun handleRemoteChanged(): Boolean {
         var newValue: Any?
         synchronized(dataLock) {
             newValue = pendingData
@@ -83,8 +81,7 @@ constructor(
         }
     }
 
-    @RestrictTo(RestrictTo.Scope.LIBRARY)
-    internal fun notifyRemoteDataChanged() {
+    private fun notifyRemoteDataChanged() {
         val service = service ?: return
         try {
             service.notifyDataChanged(
