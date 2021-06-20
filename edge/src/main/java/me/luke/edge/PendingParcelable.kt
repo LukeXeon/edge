@@ -6,7 +6,7 @@ import androidx.annotation.RestrictTo
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 internal class PendingParcelable : VersionedParcelable {
-    val fromNew: Boolean
+    val isFromNew: Boolean
     val pid: Int
 
     constructor(
@@ -15,18 +15,18 @@ internal class PendingParcelable : VersionedParcelable {
         fromNew: Boolean,
         pid: Int
     ) : super(version, data) {
-        this.fromNew = fromNew
+        this.isFromNew = fromNew
         this.pid = pid
     }
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         super.writeToParcel(parcel, flags)
-        parcel.writeInt(if (fromNew) 1 else 0)
+        parcel.writeInt(if (isFromNew) 1 else 0)
         parcel.writeInt(pid)
     }
 
     constructor(parcel: Parcel) : super(parcel) {
-        this.fromNew = parcel.readInt() != 0
+        this.isFromNew = parcel.readInt() != 0
         this.pid = parcel.readInt()
     }
 

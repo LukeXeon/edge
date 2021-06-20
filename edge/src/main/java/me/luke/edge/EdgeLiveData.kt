@@ -74,7 +74,7 @@ constructor(
         val pid = value.pid
         val version = value.version
         val data = value.data
-        val fromNew = value.fromNew
+        val fromNew = value.isFromNew
         return if (lastUpdate < version || (lastUpdate == version && pid < Process.myPid())) {
             @Suppress("UNCHECKED_CAST")
             super.setValue(data as T)
