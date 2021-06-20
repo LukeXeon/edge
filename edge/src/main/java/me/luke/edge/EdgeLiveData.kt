@@ -20,8 +20,8 @@ constructor(
     exported: Boolean = false
 ) : MutableLiveData<T>() {
     private val dataLock = Any()
-    private val handleReceiveRunnable by lazy { HandleReceiveRunnable(this) }
-    private val instanceId by lazy { ParcelUuid(UUID.randomUUID()) }
+    private val handleReceiveRunnable = HandleReceiveRunnable(this)
+    private val instanceId = ParcelUuid(UUID.randomUUID())
     private val stub by lazy {
         object : IEdgeSyncCallback.Stub() {
             override fun onReceive(value: PendingParcelable) {
