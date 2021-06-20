@@ -21,7 +21,6 @@ constructor(
 ) : MutableLiveData<T>() {
     private val dataLock = Any()
     private val handleReceiveRunnable = HandleReceiveRunnable(this)
-    private val instanceId = ParcelUuid(UUID.randomUUID())
     private val stub by lazy {
         object : IEdgeSyncCallback.Stub() {
             override fun onReceive(value: PendingParcelable) {
@@ -37,12 +36,12 @@ constructor(
         }
     }
     private var pendingData: Any? = PENDING_NO_SET
+    private var instanceId: ParcelUuid? = null
     private var service: IEdgeSyncService? = null
         set(newValue) {
             field = newValue
-            newValue?.setCallback(
+            instanceId = newValue?.setCallback(
                 dataId,
-                instanceId,
                 VersionedParcelable(lastUpdate, value),
                 stub
             )

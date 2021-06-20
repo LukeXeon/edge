@@ -16,10 +16,9 @@ internal open class EdgeSyncService : Service() {
 
         override fun setCallback(
             dataId: Int,
-            instanceId: ParcelUuid,
             value: VersionedParcelable,
             callback: IEdgeSyncCallback
-        ) {
+        ): ParcelUuid {
             val pid = Binder.getCallingPid()
             val callbackList = synchronized(callbacks) {
                 var list = callbacks.get(dataId)
@@ -43,7 +42,9 @@ internal open class EdgeSyncService : Service() {
                 }
                 callbackList.finishBroadcast()
             }
-            callbackList.register(callback, instanceId.uuid)
+            val uuid = UUID.randomUUID()
+            callbackList.register(callback, uuid)
+            return ParcelUuid(uuid)
         }
 
         override fun notifyDataChanged(

@@ -8,5 +8,5 @@ interface IEdgeSyncService {
 
     void notifyDataChanged(in int dataId, in ParcelUuid instanceId, in VersionedParcelable value);
 
-    void setCallback(in int dataId, in ParcelUuid instanceId, in VersionedParcelable value, in IEdgeSyncCallback callback);
+    ParcelUuid setCallback(in int dataId, in VersionedParcelable value, in IEdgeSyncCallback callback);
 }
