@@ -11,18 +11,15 @@ import androidx.annotation.MainThread
 import androidx.lifecycle.MutableLiveData
 import java.lang.ref.WeakReference
 
-class EdgeLiveData<T : Parcelable?>
-@JvmOverloads
-constructor(
+class EdgeLiveData<T : Parcelable?>(
     context: Context,
     @IdRes
-    private val dataId: Int,
-    exported: Boolean = false
+    private val dataId: Int
 ) : MutableLiveData<T>() {
     private val dataLock = Any()
     private val handleReceiveRunnable = HandleReceiveRunnable(this)
     private val stub by lazy {
-        object : IEdgeSyncCallback.Stub() {
+        object : IEdgeLiveDataCallback.Stub() {
             override fun onReceive(value: ReceivedModifiedData) {
                 var postTask: Boolean
                 synchronized(dataLock) {
@@ -40,7 +37,7 @@ constructor(
     private var service: IEdgeSyncService? = null
         set(newValue) {
             field = newValue
-            instanceId = newValue?.setCallback(
+            instanceId = newValue?.setLiveDataCallback(
                 dataId,
                 ModifiedData(lastUpdate, value),
                 stub
@@ -49,7 +46,7 @@ constructor(
     private var lastUpdate: Long = 0
 
     init {
-        Connection(context, this, exported)
+        Connection(context, this)
     }
 
     @MainThread
@@ -107,8 +104,7 @@ constructor(
 
     private class Connection(
         context: Context,
-        instance: EdgeLiveData<*>,
-        private val exported: Boolean
+        instance: EdgeLiveData<*>
     ) : ServiceConnection {
 
         private val reference = WeakReference(instance)
@@ -123,10 +119,7 @@ constructor(
             appContext.bindService(
                 Intent(
                     appContext,
-                    if (exported)
-                        EdgeSyncServiceEx::class.java
-                    else
-                        EdgeSyncService::class.java
+                    EdgeSyncService::class.java
                 ),
                 this,
                 Context.BIND_AUTO_CREATE

@@ -11,13 +11,13 @@ import java.util.*
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 internal open class EdgeSyncService : Service() {
-    private val callbacks = SparseArray<RemoteCallbackList<IEdgeSyncCallback>>()
+    private val callbacks = SparseArray<RemoteCallbackList<IEdgeLiveDataCallback>>()
     private val stub = object : IEdgeSyncService.Stub() {
 
-        override fun setCallback(
+        override fun setLiveDataCallback(
             dataId: Int,
             value: ModifiedData,
-            callback: IEdgeSyncCallback
+            callback: IEdgeLiveDataCallback
         ): ParcelUuid {
             val pid = Binder.getCallingPid()
             val callbackList = synchronized(callbacks) {

@@ -2,7 +2,7 @@ package me.luke.edge;
 
 import me.luke.edge.ReceivedModifiedData;
 
-interface IEdgeSyncCallback {
+interface IEdgeLiveDataCallback {
 
     void onReceive(in ReceivedModifiedData value);
 
