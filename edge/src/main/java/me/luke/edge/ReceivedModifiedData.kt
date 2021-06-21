@@ -5,7 +5,7 @@ import android.os.Parcelable
 import androidx.annotation.RestrictTo
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-internal class PendingParcelable : VersionedParcelable {
+internal class ReceivedModifiedData : ModifiedData {
     val isFromNew: Boolean
     val pid: Int
 
@@ -30,13 +30,13 @@ internal class PendingParcelable : VersionedParcelable {
         this.pid = parcel.readInt()
     }
 
-    companion object CREATOR : Parcelable.Creator<PendingParcelable> {
+    companion object CREATOR : Parcelable.Creator<ReceivedModifiedData> {
 
-        override fun createFromParcel(source: Parcel): PendingParcelable {
-            return PendingParcelable(source)
+        override fun createFromParcel(source: Parcel): ReceivedModifiedData {
+            return ReceivedModifiedData(source)
         }
 
-        override fun newArray(size: Int): Array<PendingParcelable?> {
+        override fun newArray(size: Int): Array<ReceivedModifiedData?> {
             return arrayOfNulls(size)
         }
     }

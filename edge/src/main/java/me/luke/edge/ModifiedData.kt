@@ -9,7 +9,7 @@ import android.view.inspector.WindowInspector
 import androidx.annotation.RestrictTo
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-internal open class VersionedParcelable(
+internal open class ModifiedData(
     val version: Long,
     val data: Parcelable?
 ) : Parcelable {
@@ -28,9 +28,9 @@ internal open class VersionedParcelable(
         return 0
     }
 
-    companion object CREATOR : Parcelable.Creator<VersionedParcelable> {
+    companion object CREATOR : Parcelable.Creator<ModifiedData> {
 
-        private const val TAG = "VersionedParcelable"
+        private const val TAG = "ModifiedData"
 
         private val application by lazy {
             try {
@@ -55,11 +55,11 @@ internal open class VersionedParcelable(
             }
         }
 
-        override fun createFromParcel(parcel: Parcel): VersionedParcelable {
-            return VersionedParcelable(parcel)
+        override fun createFromParcel(parcel: Parcel): ModifiedData {
+            return ModifiedData(parcel)
         }
 
-        override fun newArray(size: Int): Array<VersionedParcelable?> {
+        override fun newArray(size: Int): Array<ModifiedData?> {
             return arrayOfNulls(size)
         }
     }

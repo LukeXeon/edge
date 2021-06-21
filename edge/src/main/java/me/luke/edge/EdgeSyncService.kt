@@ -16,7 +16,7 @@ internal open class EdgeSyncService : Service() {
 
         override fun setCallback(
             dataId: Int,
-            value: VersionedParcelable,
+            value: ModifiedData,
             callback: IEdgeSyncCallback
         ): ParcelUuid {
             val pid = Binder.getCallingPid()
@@ -34,7 +34,7 @@ internal open class EdgeSyncService : Service() {
                     val cb = callbackList.getBroadcastItem(i)
                     try {
                         cb.onReceive(
-                            PendingParcelable(value.version, value.data, true, pid)
+                            ReceivedModifiedData(value.version, value.data, true, pid)
                         )
                     } catch (e: RemoteException) {
                         Log.w(logTag, e)
@@ -50,7 +50,7 @@ internal open class EdgeSyncService : Service() {
         override fun notifyDataChanged(
             dataId: Int,
             instanceId: ParcelUuid,
-            value: VersionedParcelable
+            value: ModifiedData
         ) {
             val pid = Binder.getCallingPid()
             val ignoreId = instanceId.uuid
@@ -63,7 +63,7 @@ internal open class EdgeSyncService : Service() {
                     if (callbackId != ignoreId) {
                         try {
                             callback.onReceive(
-                                PendingParcelable(value.version, value.data, false, pid)
+                                ReceivedModifiedData(value.version, value.data, false, pid)
                             )
                         } catch (e: RemoteException) {
                             Log.w(logTag, e)

@@ -23,7 +23,7 @@ constructor(
     private val handleReceiveRunnable = HandleReceiveRunnable(this)
     private val stub by lazy {
         object : IEdgeSyncCallback.Stub() {
-            override fun onReceive(value: PendingParcelable) {
+            override fun onReceive(value: ReceivedModifiedData) {
                 var postTask: Boolean
                 synchronized(dataLock) {
                     postTask = pendingData == Unit
@@ -42,7 +42,7 @@ constructor(
             field = newValue
             instanceId = newValue?.setCallback(
                 dataId,
-                VersionedParcelable(lastUpdate, value),
+                ModifiedData(lastUpdate, value),
                 stub
             )
         }
@@ -65,7 +65,7 @@ constructor(
             newValue = pendingData
             pendingData = Unit
         }
-        val value = newValue as? PendingParcelable ?: return false
+        val value = newValue as? ReceivedModifiedData ?: return false
         val pid = value.pid
         val version = value.version
         val data = value.data
@@ -86,7 +86,7 @@ constructor(
             service.notifyDataChanged(
                 dataId,
                 instanceId,
-                VersionedParcelable(lastUpdate, value)
+                ModifiedData(lastUpdate, value)
             )
         } catch (e: RemoteException) {
             Log.w(TAG, e)

@@ -7,6 +7,8 @@ import android.os.ParcelUuid
 import android.widget.TextView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Observer
+import me.luke.edge.EdgeContext
 import me.luke.edge.EdgeLiveData
 
 class MainActivity2 : AppCompatActivity() {
@@ -18,17 +20,16 @@ class MainActivity2 : AppCompatActivity() {
         setContentView(R.layout.activity_main2)
         val text: TextView = findViewById(R.id.text)
         data2 = EdgeLiveData(this, R.id.text)
-        data2.observe(this) {
-            text.text = it.uuid.toString()
-        }
+        data2.observe(this, Observer { text.text = it.uuid.toString() })
+        val ctx = EdgeContext(this)
         if (ContextCompat.checkSelfPermission(
                 this,
-                EdgeLiveData.getPackagePermissionName(this)
+                ctx.permission
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(EdgeLiveData.getPackagePermissionName(this)),
+                arrayOf(ctx.permission),
                 10086
             )
         }
