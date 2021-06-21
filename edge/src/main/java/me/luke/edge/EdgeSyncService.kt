@@ -37,7 +37,7 @@ internal open class EdgeSyncService : Service() {
                             ReceivedModifiedData(value.version, value.data, true, pid)
                         )
                     } catch (e: RemoteException) {
-                        Log.w(logTag, e)
+                        Log.w(TAG, e)
                     }
                 }
                 callbackList.finishBroadcast()
@@ -66,7 +66,7 @@ internal open class EdgeSyncService : Service() {
                                 ReceivedModifiedData(value.version, value.data, false, pid)
                             )
                         } catch (e: RemoteException) {
-                            Log.w(logTag, e)
+                            Log.w(TAG, e)
                         }
                     }
                 }
@@ -79,6 +79,8 @@ internal open class EdgeSyncService : Service() {
         return stub
     }
 
-    private val logTag by lazy { javaClass.simpleName }
+    companion object {
+        private const val TAG = "EdgeSyncService"
+    }
 
 }
