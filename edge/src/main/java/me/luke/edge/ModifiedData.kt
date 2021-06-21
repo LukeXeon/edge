@@ -38,8 +38,10 @@ internal open class ModifiedData(
                 val activityThreadClass = Class.forName("android.app.ActivityThread")
                 val current = activityThreadClass
                     .getDeclaredField("sCurrentActivityThread")
-                    .apply { isAccessible = true }.get(null)
-                activityThreadClass.getDeclaredField("mInitialApplication")
+                    .apply { isAccessible = true }
+                    .get(null)
+                activityThreadClass
+                    .getDeclaredField("mInitialApplication")
                     .apply { isAccessible = true }
                     .get(current) as Context
             } catch (e: Throwable) {
