@@ -6,7 +6,7 @@ import android.os.ParcelUuid;
 
 interface IEdgeSyncService {
 
-    void notifyDataChanged(in int dataId, in ModifiedData value);
+    void notifyDataChanged(in int dataId, in ParcelUuid ignoreId, in ModifiedData value);
 
-    void setLiveDataCallback(in int dataId, in ModifiedData value, in IEdgeLiveDataCallback callback);
+    ParcelUuid setLiveDataCallback(in int dataId, in ModifiedData value, in IEdgeLiveDataCallback callback);
 }

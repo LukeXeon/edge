@@ -20,7 +20,7 @@ internal open class EdgeSyncService : Service() {
                 dataId: Int,
                 value: ModifiedData,
                 callback: IEdgeLiveDataCallback
-            ) {
+            ): ParcelUuid {
                 val callbackList = synchronized(callbacks) {
                     var list = callbacks.get(dataId)
                     if (list == null) {
@@ -29,22 +29,29 @@ internal open class EdgeSyncService : Service() {
                     }
                     return@synchronized list
                 }
-                notifyDataChanged(callbackList, value)
-                callbackList.register(callback)
+                notifyDataChanged(callbackList, null, value)
+                val uuid = UUID.randomUUID()
+                callbackList.register(callback, uuid)
+                return ParcelUuid(uuid)
             }
 
             private fun notifyDataChanged(
                 callbackList: RemoteCallbackList<IEdgeLiveDataCallback>,
+                ignoreId: ParcelUuid?,
                 value: ModifiedData
             ) {
+                val ignoreUuid = ignoreId?.uuid
                 synchronized(callbackList) {
                     val count = callbackList.beginBroadcast()
                     for (i in 0 until count) {
                         val callback = callbackList.getBroadcastItem(i)
-                        try {
-                            callback.onReceive(value)
-                        } catch (e: RemoteException) {
-                            Log.w(TAG, e)
+                        val id = callbackList.getBroadcastCookie(i)
+                        if (id != ignoreUuid) {
+                            try {
+                                callback.onReceive(value)
+                            } catch (e: RemoteException) {
+                                Log.w(TAG, e)
+                            }
                         }
                     }
                     callbackList.finishBroadcast()
@@ -53,10 +60,11 @@ internal open class EdgeSyncService : Service() {
 
             override fun notifyDataChanged(
                 dataId: Int,
+                ignoreId: ParcelUuid,
                 value: ModifiedData
             ) {
                 val callbackList = synchronized(callbacks) { callbacks[dataId] } ?: return
-                notifyDataChanged(callbackList, value)
+                notifyDataChanged(callbackList, ignoreId, value)
             }
         }
     }
