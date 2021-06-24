@@ -1,9 +1,9 @@
 package me.luke.edge;
 
-import me.luke.edge.ReceivedModifiedData;
+import me.luke.edge.ModifiedData;
 
 interface IEdgeLiveDataCallback {
 
-    void onReceive(in ReceivedModifiedData value);
+    void onReceive(in ModifiedData value);
 
 }

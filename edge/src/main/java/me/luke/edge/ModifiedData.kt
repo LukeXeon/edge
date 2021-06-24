@@ -9,7 +9,7 @@ import android.view.inspector.WindowInspector
 import androidx.annotation.RestrictTo
 
 @RestrictTo(RestrictTo.Scope.LIBRARY)
-internal open class ModifiedData(
+internal class ModifiedData(
     val version: Long,
     val data: Parcelable?
 ) : Parcelable {

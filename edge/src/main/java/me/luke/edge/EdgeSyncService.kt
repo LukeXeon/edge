@@ -20,8 +20,7 @@ internal open class EdgeSyncService : Service() {
                 dataId: Int,
                 value: ModifiedData,
                 callback: IEdgeLiveDataCallback
-            ): ParcelUuid {
-                val pid = Binder.getCallingPid()
+            ) {
                 val callbackList = synchronized(callbacks) {
                     var list = callbacks.get(dataId)
                     if (list == null) {
@@ -30,50 +29,34 @@ internal open class EdgeSyncService : Service() {
                     }
                     return@synchronized list
                 }
+                notifyDataChanged(callbackList, value)
+                callbackList.register(callback)
+            }
+
+            private fun notifyDataChanged(
+                callbackList: RemoteCallbackList<IEdgeLiveDataCallback>,
+                value: ModifiedData
+            ) {
                 synchronized(callbackList) {
                     val count = callbackList.beginBroadcast()
                     for (i in 0 until count) {
-                        val cb = callbackList.getBroadcastItem(i)
+                        val callback = callbackList.getBroadcastItem(i)
                         try {
-                            cb.onReceive(
-                                ReceivedModifiedData(value.version, value.data, true, pid)
-                            )
+                            callback.onReceive(value)
                         } catch (e: RemoteException) {
                             Log.w(TAG, e)
                         }
                     }
                     callbackList.finishBroadcast()
                 }
-                val uuid = UUID.randomUUID()
-                callbackList.register(callback, uuid)
-                return ParcelUuid(uuid)
             }
 
             override fun notifyDataChanged(
                 dataId: Int,
-                instanceId: ParcelUuid,
                 value: ModifiedData
             ) {
-                val pid = Binder.getCallingPid()
-                val ignoreId = instanceId.uuid
                 val callbackList = synchronized(callbacks) { callbacks[dataId] } ?: return
-                synchronized(callbackList) {
-                    val count = callbackList.beginBroadcast()
-                    for (i in 0 until count) {
-                        val callback = callbackList.getBroadcastItem(i)
-                        val callbackId = callbackList.getBroadcastCookie(i) as? UUID
-                        if (callbackId != ignoreId) {
-                            try {
-                                callback.onReceive(
-                                    ReceivedModifiedData(value.version, value.data, false, pid)
-                                )
-                            } catch (e: RemoteException) {
-                                Log.w(TAG, e)
-                            }
-                        }
-                    }
-                    callbackList.finishBroadcast()
-                }
+                notifyDataChanged(callbackList, value)
             }
         }
     }

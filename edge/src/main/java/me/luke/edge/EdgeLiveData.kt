@@ -20,28 +20,36 @@ class EdgeLiveData<T : Parcelable?>(
     private val handleReceiveRunnable = HandleReceiveRunnable(this)
     private val stub by lazy {
         object : IEdgeLiveDataCallback.Stub() {
-            override fun onReceive(value: ReceivedModifiedData) {
+            override fun onReceive(value: ModifiedData) {
                 var postTask: Boolean
+                val version = value.version
                 synchronized(dataLock) {
                     postTask = pendingData == Unit
                     pendingData = value
                 }
                 if (postTask) {
-                    MAIN_HANDLER.post(handleReceiveRunnable)
+                    val message = Message.obtain(handler, handleReceiveRunnable)
+                    message.obj = version
+                    handler.sendMessage(message)
                 }
             }
         }
     }
+    private val handler = Handler(Looper.getMainLooper())
     private var pendingData: Any? = Unit
-    private var instanceId: ParcelUuid? = null
     private var service: IEdgeSyncService? = null
         set(newValue) {
-            field = newValue
-            instanceId = newValue?.setLiveDataCallback(
-                dataId,
-                ModifiedData(lastUpdate, value),
-                stub
-            )
+            field = try {
+                newValue?.setLiveDataCallback(
+                    dataId,
+                    ModifiedData(lastUpdate, value),
+                    stub
+                )
+                newValue
+            } catch (e: RemoteException) {
+                Log.w(TAG, e)
+                null
+            }
         }
     private var lastUpdate: Long = 0
 
@@ -51,42 +59,39 @@ class EdgeLiveData<T : Parcelable?>(
 
     @MainThread
     override fun setValue(value: T) {
-        super.setValue(value)
-        lastUpdate = SystemClock.elapsedRealtimeNanos()
-        notifyRemoteDataChanged()
+        val version = SystemClock.elapsedRealtimeNanos()
+        val service = service
+        var sended = false
+        if (service != null) {
+            try {
+                service.notifyDataChanged(dataId, ModifiedData(version, value))
+                sended = true
+            } catch (e: RemoteException) {
+                Log.w(TAG, e)
+            }
+        }
+        if (sended) {
+            handleRemoteChanged()
+            handler.removeCallbacks(handleReceiveRunnable, version)
+        } else {
+            super.setValue(value)
+            lastUpdate = version
+        }
     }
 
-    private fun handleRemoteChanged(): Boolean {
+    private fun handleRemoteChanged() {
         var newValue: Any?
         synchronized(dataLock) {
             newValue = pendingData
             pendingData = Unit
         }
-        val value = newValue as? ReceivedModifiedData ?: return false
-        val pid = value.pid
+        val value = newValue as? ModifiedData ?: return
         val version = value.version
         val data = value.data
-        val isFromNew = value.isFromNew
-        return if (lastUpdate < version || (lastUpdate == version && pid <= Process.myPid())) {
+        if (lastUpdate < version) {
             @Suppress("UNCHECKED_CAST")
             super.setValue(data as T)
             lastUpdate = version
-            isFromNew
-        } else {
-            false
-        }
-    }
-
-    private fun notifyRemoteDataChanged() {
-        val service = service ?: return
-        try {
-            service.notifyDataChanged(
-                dataId,
-                instanceId,
-                ModifiedData(lastUpdate, value)
-            )
-        } catch (e: RemoteException) {
-            Log.w(TAG, e)
         }
     }
 
@@ -95,10 +100,7 @@ class EdgeLiveData<T : Parcelable?>(
         private val reference = WeakReference(instance)
 
         override fun run() {
-            val instance = reference.get() ?: return
-            if (!instance.handleRemoteChanged()) {
-                instance.notifyRemoteDataChanged()
-            }
+            reference.get()?.handleRemoteChanged()
         }
     }
 
@@ -150,7 +152,7 @@ class EdgeLiveData<T : Parcelable?>(
     }
 
     companion object {
-        private val MAIN_HANDLER = Handler(Looper.getMainLooper())
+
         private const val TAG = "EdgeLiveData"
     }
 
